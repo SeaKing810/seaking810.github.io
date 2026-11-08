@@ -1,0 +1,74 @@
+ARCHITECTURE AND DESIGN DECISIONS
+Sean McKenna | CS 499 | November 7, 2026
+
+Scope and origin
+Original: Contact.java, ContactService.java, ContactTest.java, ContactServiceTest.java
+from CS 320. Repository publication is February 27, 2026. All four files are
+unchanged in original/. The enhancement is a separate packaged Java application;
+its API intentionally replaces mutable setters with whole-record updates.
+
+Layers
+Console user
+    -> ContactCli: prompts, menu, confirmation, display
+    -> ContactService: CRUD rules, candidate state, commit ordering
+    -> ContactRepository: persistence contract
+         -> InMemoryContactRepository: isolated tests
+         -> JsonFileContactRepository: validated disk snapshots
+              -> ContactJson: strict schema and UTF-8 JSON representation
+              -> AtomicFileStore: temporary writes and atomic replacement
+Contact: immutable validated value shared across layers
+Main: composition root and lifetime of repository/process lock
+
+Update sequence
+1. Find the ID; reject missing records.
+2. Construct and validate every proposed field in a new Contact.
+3. Build a candidate collection; retain the current collection unchanged.
+4. Recheck stored JSON, serialize the candidate, and write a private temporary file.
+5. Flush the temporary file and request atomic replacement in the same directory.
+6. Only after success, publish the candidate in memory and display success.
+Add and delete use the same commit path. No setters expose partially updated data.
+
+Decisions and tradeoffs
+- Immutable records remove the baseline's aliasing risk. A caller can read a
+  Contact but cannot use a setter to alter repository-owned state.
+- Repository abstraction separates business behavior from file operations and
+  allows deterministic failure injection. This adds classes but reduces coupling.
+- TreeMap gives deterministic ordering and O(log n) lookup. Candidate creation,
+  validation, and map construction add up to O(n log n) work per mutation in this
+  implementation. Serialization and disk output scale with the snapshot size.
+  Space is O(n), plus the bounded encoded snapshot. This is not a performance claim
+  or the future CS 300 AVL enhancement. The baseline HashMap had expected O(1)
+  lookups and updates without persistence.
+- JSON is inspectable and easy to back up for a small local application. Rewriting
+  the entire snapshot trades throughput for a clear all-or-nothing commit boundary.
+- Gson is used through its strict streaming reader/writer, never reflective object
+  creation. Every decoded contact passes through the same validating constructor.
+- Unsupported atomic replacement is an explicit error. There is no ordinary-move
+  fallback. File force() improves flushing but is not a universal power-loss or
+  filesystem durability guarantee; the directory is not fsynced by this design.
+- An advisory process lock enforces one cooperating instance. Threads and malicious
+  writers under the same OS account are outside the trust model.
+- The 1,000-contact / 1 MiB caps bound storage parsing; no cloud or database service
+  is introduced. A database would be a better choice for concurrent large stores.
+
+Review and scope record
+Module One instructor feedback specifically endorsed layered architecture,
+repository abstractions, persistence, transactional updates, and validation.
+Decision: retain that plan for Milestone Two. No category substitution was made.
+Implementation refinements: immutable records, a strict schema, bounded reads,
+owner-only POSIX files, and an instance lock make the planned safeguards concrete.
+The new broken-input regression arose during local implementation review.
+
+Questions for the milestone reviewer
+1. Is the recovery guidance clear enough for a nontechnical local user?
+2. Does the evidence map make the persistence and partial-update controls easy to assess?
+3. Should the final narrative further emphasize architecture or failure testing?
+
+Further instructor feedback has not yet been received or applied to this milestone.
+The final enhancement and ePortfolio publication will follow that feedback.
+
+Reference documentation
+Oracle. Files, Java SE 17:
+https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/file/Files.html
+Google. Gson troubleshooting, strictness and constructor behavior:
+https://google.github.io/gson/Troubleshooting.html

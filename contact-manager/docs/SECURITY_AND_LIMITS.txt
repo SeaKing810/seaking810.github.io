@@ -1,0 +1,31 @@
+SECURITY SCOPE AND LIMITATIONS
+Sean McKenna | CS 499 | November 7, 2026
+
+Assets: contact details, valid saved snapshots, and continuity of local operations.
+Trust boundaries: console input, serialized files, filesystem operations, and the
+current operating-system account. All bundled demonstration data is fictional.
+
+Risk -> Control -> Residual limitation
+Malformed values -> Constructor validation, strict JSON field/type/duplicate checks,
+UTF-8 validation -> No general-purpose address or telephone ownership verification.
+Partial update -> Immutable candidate plus save-before-publish -> No distributed transaction.
+Interrupted/failed save -> Same-directory temporary file, force(), atomic replacement,
+no non-atomic fallback -> No promise against hardware faults, power loss, malicious
+same-account tampering, or a provider that violates filesystem guarantees.
+Unexpected large file -> Read at most 1 MiB plus a sentinel byte, at most 1,000 records
+-> Console input is intended for an interactive local user, not an untrusted server feed.
+Local disclosure -> POSIX 700 directory and 600 newly created files, validation of
+existing permissions, no contact values in diagnostics -> No encryption; authorized
+terminal output and backups contain contact data. On Windows, existing account ACLs
+must supply access restrictions; Windows behavior was not exercised here.
+Overlapping writers -> Advisory lock held for the repository lifetime -> Only
+cooperating instances obey it; do not edit files or remove lock files while running.
+Path redirection -> Reject final storage-directory, data-file, and lock-file symlinks
+-> Ancestor links and same-account hostile filesystem races are outside this model.
+Invalid store at startup -> Fail closed and preserve bytes -> User must restore a
+known-good backup; the application does not silently repair or reset data.
+
+Temporary files are private and cleaned after failed commits where possible.
+A cleanup failure may leave a private orphan; this does not justify changing a
+successfully committed save into a reported failure. Check for .contacts-*.tmp
+only after closing the application. This package does not include live data.

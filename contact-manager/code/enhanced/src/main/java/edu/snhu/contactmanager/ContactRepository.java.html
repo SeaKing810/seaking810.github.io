@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactRepository.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>ContactRepository.java</h1><p class="meta">src/main/java/edu/snhu/contactmanager/ContactRepository.java</p><p class="raw"><a href="ContactRepository.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.TreeMap;
+
+/**
+ * Sean McKenna | CS 499 Milestone Two | November 7, 2026.
+ * Persistence boundary: a save commits one complete validated snapshot or fails.
+ * Immutable values and copied maps prevent aliasing across application layers.
+ */
+public interface ContactRepository {
+    int MAX_CONTACTS = 1000;
+
+    Map&lt;String, Contact&gt; load() throws IOException;
+    void save(Map&lt;String, Contact&gt; contacts) throws IOException;
+
+    static Map&lt;String, Contact&gt; validatedCopy(Map&lt;String, Contact&gt; contacts) {
+        if (contacts == null || contacts.size() &gt; MAX_CONTACTS) {
+            throw new IllegalArgumentException(&quot;A store may contain at most 1000 contacts.&quot;);
+        }
+        Map&lt;String, Contact&gt; copy = new TreeMap&lt;&gt;();
+        contacts.forEach((key, contact) -&gt; {
+            if (contact == null || !contact.contactId().equals(key)) {
+                throw new IllegalArgumentException(&quot;Contact keys must match their IDs.&quot;);
+            }
+            copy.put(key, contact);
+        });
+        return copy;
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

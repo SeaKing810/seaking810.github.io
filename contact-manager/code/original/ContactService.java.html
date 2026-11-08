@@ -1,0 +1,59 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactService.java | Sean McKenna</title><link rel="stylesheet" href="../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../contact-manager.html">Contact Manager</a><a href="../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">original source</p><h1>ContactService.java</h1><p class="meta">ContactService.java</p><p class="raw"><a href="ContactService.java">Open raw Java file</a> · <a href="../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>import java.util.HashMap;
+import java.util.Map;
+
+public class ContactService {
+
+    private final Map&lt;String, Contact&gt; contacts = new HashMap&lt;&gt;();
+
+    public void addContact(Contact contact) {
+
+        if (contact == null) {
+            throw new IllegalArgumentException(&quot;Contact cannot be null&quot;);
+        }
+
+        if (contacts.containsKey(contact.getContactId())) {
+            throw new IllegalArgumentException(&quot;Duplicate contact ID&quot;);
+        }
+
+        contacts.put(contact.getContactId(), contact);
+    }
+
+    public void deleteContact(String contactId) {
+
+        if (!contacts.containsKey(contactId)) {
+            throw new IllegalArgumentException(&quot;Contact not found&quot;);
+        }
+
+        contacts.remove(contactId);
+    }
+
+    public void updateFirstName(String contactId, String firstName) {
+        Contact contact = getContact(contactId);
+        contact.setFirstName(firstName);
+    }
+
+    public void updateLastName(String contactId, String lastName) {
+        Contact contact = getContact(contactId);
+        contact.setLastName(lastName);
+    }
+
+    public void updatePhone(String contactId, String phone) {
+        Contact contact = getContact(contactId);
+        contact.setPhone(phone);
+    }
+
+    public void updateAddress(String contactId, String address) {
+        Contact contact = getContact(contactId);
+        contact.setAddress(address);
+    }
+
+    private Contact getContact(String contactId) {
+
+        if (!contacts.containsKey(contactId)) {
+            throw new IllegalArgumentException(&quot;Contact not found&quot;);
+        }
+
+        return contacts.get(contactId);
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

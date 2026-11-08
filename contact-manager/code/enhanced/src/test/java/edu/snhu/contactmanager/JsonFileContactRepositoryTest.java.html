@@ -1,0 +1,176 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JsonFileContactRepositoryTest.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>JsonFileContactRepositoryTest.java</h1><p class="meta">src/test/java/edu/snhu/contactmanager/JsonFileContactRepositoryTest.java</p><p class="raw"><a href="JsonFileContactRepositoryTest.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import java.io.IOException;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Map;
+import java.util.TreeMap;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import static org.junit.jupiter.api.Assertions.*;
+import static edu.snhu.contactmanager.ContactServiceTest.sample;
+
+/** Sean McKenna | CS 499 | November 7, 2026. Real disk integration and deterministic failure injection. */
+class JsonFileContactRepositoryTest {
+    @TempDir Path temporaryRoot;
+
+    private Path store() { return temporaryRoot.resolve(&quot;store&quot;); }
+    private Path file() { return store().resolve(&quot;contacts.json&quot;); }
+
+    private void seed() throws IOException {
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            new ContactService(repository).add(sample(&quot;1&quot;));
+        }
+    }
+
+    @Test void addEditDeletePersistAcrossReopens() throws IOException {
+        seed();
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            ContactService service = new ContactService(repository);
+            assertEquals(sample(&quot;1&quot;), service.find(&quot;1&quot;));
+            service.update(&quot;1&quot;, &quot;Taylor&quot;, &quot;Smith&quot;, &quot;2025550102&quot;, &quot;20 Example Road&quot;);
+        }
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            ContactService service = new ContactService(repository);
+            assertEquals(&quot;Taylor&quot;, service.find(&quot;1&quot;).firstName());
+            service.delete(&quot;1&quot;);
+        }
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            assertTrue(repository.load().isEmpty());
+        }
+    }
+
+    @Test void unicodeAndJsonEscapingRoundTrip() throws IOException {
+        Contact contact = new Contact(&quot;1&quot;, &quot;Zoë&quot;, &quot;O&#x27;Neil&quot;, &quot;0000000000&quot;, &quot;10 \&quot;A\&quot; \\ Road&quot;);
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            repository.save(Map.of(&quot;1&quot;, contact));
+            assertEquals(contact, repository.load().get(&quot;1&quot;));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {&quot;&quot;, &quot;[&quot;, &quot;null&quot;, &quot;{}&quot;, &quot;[] []&quot;, &quot;[{}]&quot;, &quot;[null]&quot;, &quot;/*comment*/[]&quot;,
+        &quot;[{\&quot;contactId\&quot;:\&quot;1\&quot;,\&quot;contactId\&quot;:\&quot;2\&quot;}]&quot;, &quot;[{\&quot;unknown\&quot;:\&quot;x\&quot;}]&quot;,
+        &quot;[{\&quot;contactId\&quot;:3}]&quot;, &quot;[[]]&quot;})
+    void malformedStoreFailsClosedAndBytesRemain(String malformed) throws IOException {
+        seed(); Files.writeString(file(), malformed);
+        byte[] before = Files.readAllBytes(file());
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            assertThrows(IOException.class, () -&gt; new ContactService(repository));
+            assertThrows(IOException.class, () -&gt; repository.save(Map.of(&quot;2&quot;, sample(&quot;2&quot;))));
+        }
+        assertArrayEquals(before, Files.readAllBytes(file()));
+    }
+
+    @Test void duplicateIdsAndSemanticallyInvalidDataRejected() throws IOException {
+        String valid = ContactJson.encode(Map.of(&quot;1&quot;, sample(&quot;1&quot;))).strip();
+        String object = valid.substring(1, valid.length() - 1).strip();
+        assertThrows(IOException.class, () -&gt; ContactJson.decode(&quot;[&quot; + object + &quot;,&quot; + object + &quot;]&quot;));
+        assertThrows(IOException.class, () -&gt; ContactJson.decode(valid.replace(&quot;2025550101&quot;, &quot;abcdefghij&quot;)));
+        assertThrows(IOException.class, () -&gt; ContactJson.decode(valid.replace(&quot;Alex&quot;, &quot; &quot;)));
+        assertThrows(IOException.class, () -&gt; ContactJson.decode(valid.replace(&quot;\&quot;Alex\&quot;&quot;, &quot;null&quot;)));
+        assertThrows(IOException.class, () -&gt; ContactJson.decode(valid.replace(&quot;\&quot;Alex\&quot;&quot;, &quot;42&quot;)));
+    }
+
+    @Test void excessiveBytesAndInvalidUtf8Rejected() throws IOException {
+        seed();
+        Files.write(file(), new byte[JsonFileContactRepository.MAX_BYTES + 1]);
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            assertThrows(IOException.class, repository::load);
+        }
+        Files.write(file(), new byte[] {(byte)0xc3, (byte)0x28});
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            assertThrows(IOException.class, repository::load);
+        }
+    }
+
+    @Test void recordLimitAcceptedThenRejected() throws IOException {
+        Map&lt;String, Contact&gt; contacts = new TreeMap&lt;&gt;();
+        for (int i = 0; i &lt; 1000; i++) contacts.put(&quot;C&quot; + i, sample(&quot;C&quot; + i));
+        String encoded = ContactJson.encode(contacts).strip();
+        assertEquals(1000, ContactJson.decode(encoded).size());
+        String extra = ContactJson.encode(Map.of(&quot;extra&quot;, sample(&quot;extra&quot;))).strip();
+        String overLimit = encoded.substring(0, encoded.length() - 1) + &quot;,&quot; + extra.substring(1);
+        assertThrows(IOException.class, () -&gt; ContactJson.decode(overLimit));
+    }
+
+    @ParameterizedTest @ValueSource(strings = {&quot;write&quot;, &quot;move&quot;, &quot;unsupported&quot;})
+    void failedCommitPreservesDiskAndMemoryAndRemovesTemporaryFile(String failure) throws IOException {
+        seed(); byte[] before = Files.readAllBytes(file());
+        AtomicFileStore storage = new AtomicFileStore() {
+            private final AtomicFileStore actual = new AtomicFileStore.Nio();
+            public void write(Path temporary, byte[] bytes) throws IOException {
+                if (failure.equals(&quot;write&quot;)) {
+                    Files.writeString(temporary, &quot;partial&quot;);
+                    throw new AccessDeniedException(&quot;injected write denial&quot;);
+                }
+                actual.write(temporary, bytes);
+            }
+            public void replace(Path temporary, Path destination) throws IOException {
+                if (failure.equals(&quot;unsupported&quot;)) {
+                    throw new AtomicMoveNotSupportedException(&quot;temporary&quot;, &quot;destination&quot;, &quot;injected&quot;);
+                }
+                throw new IOException(&quot;injected pre-commit move failure&quot;);
+            }
+        };
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store(), storage)) {
+            ContactService service = new ContactService(repository);
+            assertThrows(IOException.class, () -&gt; service.update(&quot;1&quot;, &quot;Taylor&quot;, &quot;Smith&quot;, &quot;2025550102&quot;, &quot;New address&quot;));
+            assertEquals(sample(&quot;1&quot;), service.find(&quot;1&quot;));
+        }
+        assertArrayEquals(before, Files.readAllBytes(file()));
+        try (var files = Files.list(store())) {
+            assertTrue(files.noneMatch(path -&gt; path.getFileName().toString().endsWith(&quot;.tmp&quot;)));
+        }
+    }
+
+    @Test void secondInstanceRejectedAndLockReleasedOnClose() throws IOException {
+        try (JsonFileContactRepository first = new JsonFileContactRepository(store())) {
+            assertTrue(first.load().isEmpty());
+            assertThrows(IOException.class, () -&gt; new JsonFileContactRepository(store()));
+        }
+        try (JsonFileContactRepository reopened = new JsonFileContactRepository(store())) {
+            assertTrue(reopened.load().isEmpty());
+        }
+    }
+
+    @Test void closedRepositoryRefusesOperations() throws IOException {
+        JsonFileContactRepository repository = new JsonFileContactRepository(store());
+        repository.close(); repository.close();
+        assertThrows(IOException.class, repository::load);
+        assertThrows(IOException.class, () -&gt; repository.save(Map.of()));
+    }
+
+    @Test void fileCannotServeAsDirectory() throws IOException {
+        Files.writeString(store(), &quot;occupied&quot;);
+        assertThrows(IOException.class, () -&gt; new JsonFileContactRepository(store()));
+        assertEquals(&quot;occupied&quot;, Files.readString(store()));
+    }
+
+    @Test void posixStorageIsPrivateAndLoosePermissionsRejected() throws IOException {
+        org.junit.jupiter.api.Assumptions.assumeTrue(Files.getFileStore(temporaryRoot).supportsFileAttributeView(&quot;posix&quot;));
+        seed();
+        assertEquals(PosixFilePermissions.fromString(&quot;rwx------&quot;), Files.getPosixFilePermissions(store()));
+        assertEquals(PosixFilePermissions.fromString(&quot;rw-------&quot;), Files.getPosixFilePermissions(file()));
+        Files.setPosixFilePermissions(file(), PosixFilePermissions.fromString(&quot;rw-r--r--&quot;));
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            assertThrows(IOException.class, repository::load);
+        }
+    }
+
+    @Test void symbolicDataFileRejectedWithoutTouchingTarget() throws IOException {
+        seed(); Path target = temporaryRoot.resolve(&quot;external.json&quot;);
+        Files.writeString(target, &quot;valuable&quot;); Files.delete(file()); Files.createSymbolicLink(file(), target);
+        try (JsonFileContactRepository repository = new JsonFileContactRepository(store())) {
+            assertThrows(IOException.class, repository::load);
+            assertThrows(IOException.class, () -&gt; repository.save(Map.of()));
+        }
+        assertEquals(&quot;valuable&quot;, Files.readString(target));
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

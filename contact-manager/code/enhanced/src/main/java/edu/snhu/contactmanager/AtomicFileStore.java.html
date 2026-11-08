@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AtomicFileStore.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>AtomicFileStore.java</h1><p class="meta">src/main/java/edu/snhu/contactmanager/AtomicFileStore.java</p><p class="raw"><a href="AtomicFileStore.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+
+/**
+ * Sean McKenna | CS 499 Milestone Two | November 7, 2026.
+ * Small I/O seam permits deterministic write and move failure tests. The default
+ * implementation never downgrades an unsupported atomic move to an ordinary move.
+ */
+interface AtomicFileStore {
+    void write(Path temporary, byte[] bytes) throws IOException;
+    void replace(Path temporary, Path destination) throws IOException;
+
+    final class Nio implements AtomicFileStore {
+        @Override
+        public void write(Path temporary, byte[] bytes) throws IOException {
+            try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.WRITE,
+                    StandardOpenOption.TRUNCATE_EXISTING)) {
+                ByteBuffer data = ByteBuffer.wrap(bytes);
+                while (data.hasRemaining()) channel.write(data);
+                channel.force(true);
+            }
+        }
+
+        @Override
+        public void replace(Path temporary, Path destination) throws IOException {
+            Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

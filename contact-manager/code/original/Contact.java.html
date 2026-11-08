@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contact.java | Sean McKenna</title><link rel="stylesheet" href="../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../contact-manager.html">Contact Manager</a><a href="../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">original source</p><h1>Contact.java</h1><p class="meta">Contact.java</p><p class="raw"><a href="Contact.java">Open raw Java file</a> · <a href="../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>public class Contact {
+
+    private final String contactId;
+    private String firstName;
+    private String lastName;
+    private String phone;
+    private String address;
+
+    public Contact(String contactId, String firstName, String lastName, String phone, String address) {
+
+        if (contactId == null || contactId.length() &gt; 10) {
+            throw new IllegalArgumentException(&quot;Invalid contact ID&quot;);
+        }
+
+        if (firstName == null || firstName.length() &gt; 10) {
+            throw new IllegalArgumentException(&quot;Invalid first name&quot;);
+        }
+
+        if (lastName == null || lastName.length() &gt; 10) {
+            throw new IllegalArgumentException(&quot;Invalid last name&quot;);
+        }
+
+        if (phone == null || phone.length() != 10) {
+            throw new IllegalArgumentException(&quot;Invalid phone number&quot;);
+        }
+
+        if (address == null || address.length() &gt; 30) {
+            throw new IllegalArgumentException(&quot;Invalid address&quot;);
+        }
+
+        this.contactId = contactId;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phone = phone;
+        this.address = address;
+    }
+
+    public String getContactId() {
+        return contactId;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        if (firstName == null || firstName.length() &gt; 10) {
+            throw new IllegalArgumentException(&quot;Invalid first name&quot;);
+        }
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        if (lastName == null || lastName.length() &gt; 10) {
+            throw new IllegalArgumentException(&quot;Invalid last name&quot;);
+        }
+        this.lastName = lastName;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        if (phone == null || phone.length() != 10) {
+            throw new IllegalArgumentException(&quot;Invalid phone number&quot;);
+        }
+        this.phone = phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        if (address == null || address.length() &gt; 30) {
+            throw new IllegalArgumentException(&quot;Invalid address&quot;);
+        }
+        this.address = address;
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

@@ -1,0 +1,29 @@
+RUN 1: add and quit
+Exit code: 0
+Contact Manager | 1 Add | 2 Find | 3 List | 4 Edit | 5 Delete | 0 Exit
+Command: Contact ID: First name (1-10): Last name (1-10): Phone (10 digits): Address (1-30): Contact saved.
+Command: Goodbye.
+
+
+RUN 2: restart, find, edit, list, quit
+Exit code: 0
+Contact Manager | 1 Add | 2 Find | 3 List | 4 Edit | 5 Delete | 0 Exit
+Command: Contact ID: C1 | Alex Rivera | 2025550101 | 10 Sample Road
+Command: Contact ID to edit: Enter all replacement fields. ID stays unchanged.
+First name (1-10): Last name (1-10): Phone (10 digits): Address (1-30): Contact updated.
+Command: C1 | Taylor Smith | 2025550102 | 20 Example Road
+Command: Goodbye.
+
+
+RUN 3: restart, find updated record, delete, list, quit
+Exit code: 0
+Contact Manager | 1 Add | 2 Find | 3 List | 4 Edit | 5 Delete | 0 Exit
+Command: Contact ID: C1 | Taylor Smith | 2025550102 | 20 Example Road
+Command: Contact ID to delete: Type YES to delete: Contact deleted.
+Command: No contacts saved.
+Command: Goodbye.
+
+
+RUN 4: corrupted store refuses startup
+Exit code: 1
+Unable to open or use the contact store. Close other instances and check the directory, owner-only permissions, and JSON file. Existing data was not reset.

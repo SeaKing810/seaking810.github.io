@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactCli.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>ContactCli.java</h1><p class="meta">src/main/java/edu/snhu/contactmanager/ContactCli.java</p><p class="raw"><a href="ContactCli.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import java.io.BufferedReader;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.PrintWriter;
+
+/**
+ * Sean McKenna | CS 499 Milestone Two | November 7, 2026.
+ * Presentation layer. Injected streams support end-to-end menu tests. Error
+ * messages omit contact values and storage exception details to limit disclosure.
+ */
+public final class ContactCli {
+    private final ContactService service;
+    private final BufferedReader input;
+    private final PrintWriter output;
+
+    public ContactCli(ContactService service, BufferedReader input, PrintWriter output) {
+        this.service = service;
+        this.input = input;
+        this.output = output;
+    }
+
+    public void run() throws IOException {
+        output.println(&quot;Contact Manager | 1 Add | 2 Find | 3 List | 4 Edit | 5 Delete | 0 Exit&quot;);
+        while (true) {
+            try {
+                String choice = read(&quot;Command: &quot;).strip();
+                switch (choice) {
+                    case &quot;0&quot; -&gt; { output.println(&quot;Goodbye.&quot;); return; }
+                    case &quot;1&quot; -&gt; {
+                        Contact c = readContact(read(&quot;Contact ID: &quot;));
+                        service.add(c);
+                        output.println(&quot;Contact saved.&quot;);
+                    }
+                    case &quot;2&quot; -&gt; display(service.find(read(&quot;Contact ID: &quot;)));
+                    case &quot;3&quot; -&gt; {
+                        var contacts = service.list();
+                        if (contacts.isEmpty()) output.println(&quot;No contacts saved.&quot;);
+                        contacts.forEach(this::display);
+                    }
+                    case &quot;4&quot; -&gt; {
+                        String id = read(&quot;Contact ID to edit: &quot;);
+                        service.find(id);
+                        output.println(&quot;Enter all replacement fields. ID stays unchanged.&quot;);
+                        Contact c = readContact(id);
+                        service.update(id, c.firstName(), c.lastName(), c.phone(), c.address());
+                        output.println(&quot;Contact updated.&quot;);
+                    }
+                    case &quot;5&quot; -&gt; {
+                        String id = read(&quot;Contact ID to delete: &quot;);
+                        service.find(id);
+                        if (read(&quot;Type YES to delete: &quot;).equals(&quot;YES&quot;)) {
+                            service.delete(id);
+                            output.println(&quot;Contact deleted.&quot;);
+                        } else output.println(&quot;Deletion cancelled.&quot;);
+                    }
+                    default -&gt; output.println(&quot;Choose 0, 1, 2, 3, 4, or 5.&quot;);
+                }
+            } catch (EOFException ex) {
+                output.println(&quot;Input ended; any incomplete command was cancelled.&quot;);
+                return;
+            } catch (IllegalArgumentException ex) {
+                output.println(&quot;Not saved: &quot; + ex.getMessage());
+            } catch (IOException ex) {
+                output.println(&quot;Operation failed; no in-memory change was applied. Check storage access.&quot;);
+            } finally { output.flush(); }
+        }
+    }
+
+    private Contact readContact(String id) throws IOException {
+        return new Contact(id, read(&quot;First name (1-10): &quot;), read(&quot;Last name (1-10): &quot;),
+            read(&quot;Phone (10 digits): &quot;), read(&quot;Address (1-30): &quot;));
+    }
+
+    private String read(String prompt) throws IOException {
+        output.print(prompt);
+        output.flush();
+        String value;
+        try { value = input.readLine(); }
+        catch (IOException ex) {
+            // A broken input stream cannot recover by redisplaying the menu.
+            throw new EOFException(&quot;Input unavailable.&quot;);
+        }
+        if (value == null) throw new EOFException();
+        return value;
+    }
+
+    private void display(Contact c) {
+        output.printf(&quot;%s | %s %s | %s | %s%n&quot;, c.contactId(), c.firstName(), c.lastName(),
+            c.phone(), c.address());
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

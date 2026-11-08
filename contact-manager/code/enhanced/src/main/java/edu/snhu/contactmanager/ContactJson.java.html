@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactJson.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>ContactJson.java</h1><p class="meta">src/main/java/edu/snhu/contactmanager/ContactJson.java</p><p class="raw"><a href="ContactJson.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import com.google.gson.Strictness;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+
+/**
+ * Sean McKenna | CS 499 Milestone Two | November 7, 2026.
+ * Explicit JSON schema using Gson&#x27;s strict streaming API. Deserialization calls
+ * the domain constructor instead of allowing reflection to bypass validation.
+ */
+final class ContactJson {
+    private static final Set&lt;String&gt; FIELDS =
+        Set.of(&quot;contactId&quot;, &quot;firstName&quot;, &quot;lastName&quot;, &quot;phone&quot;, &quot;address&quot;);
+
+    private ContactJson() { }
+
+    static Map&lt;String, Contact&gt; decode(String json) throws IOException {
+        Map&lt;String, Contact&gt; contacts = new TreeMap&lt;&gt;();
+        try (JsonReader reader = new JsonReader(new StringReader(json))) {
+            reader.setStrictness(Strictness.STRICT);
+            reader.beginArray();
+            while (reader.hasNext()) {
+                if (contacts.size() &gt;= ContactRepository.MAX_CONTACTS) {
+                    throw new IOException(&quot;Contact limit exceeded.&quot;);
+                }
+                Map&lt;String, String&gt; fields = new HashMap&lt;&gt;();
+                reader.beginObject();
+                while (reader.hasNext()) {
+                    String name = reader.nextName();
+                    if (!FIELDS.contains(name) || fields.containsKey(name)
+                            || reader.peek() != JsonToken.STRING) {
+                        throw new IOException(&quot;Unexpected or duplicate field or non-string value.&quot;);
+                    }
+                    fields.put(name, reader.nextString());
+                }
+                reader.endObject();
+                if (!fields.keySet().equals(FIELDS)) throw new IOException(&quot;Missing contact field.&quot;);
+                Contact contact = new Contact(fields.get(&quot;contactId&quot;), fields.get(&quot;firstName&quot;),
+                    fields.get(&quot;lastName&quot;), fields.get(&quot;phone&quot;), fields.get(&quot;address&quot;));
+                if (contacts.putIfAbsent(contact.contactId(), contact) != null) {
+                    throw new IOException(&quot;Duplicate contact ID in store.&quot;);
+                }
+            }
+            reader.endArray();
+            if (reader.peek() != JsonToken.END_DOCUMENT) throw new IOException(&quot;Trailing content.&quot;);
+            return contacts;
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new IOException(&quot;Stored contact data is invalid.&quot;, ex);
+        }
+    }
+
+    static String encode(Map&lt;String, Contact&gt; contacts) throws IOException {
+        StringWriter output = new StringWriter();
+        try (JsonWriter writer = new JsonWriter(output)) {
+            writer.setStrictness(Strictness.STRICT);
+            writer.setIndent(&quot;  &quot;);
+            writer.beginArray();
+            for (Contact c : ContactRepository.validatedCopy(contacts).values()) {
+                writer.beginObject();
+                writer.name(&quot;contactId&quot;).value(c.contactId());
+                writer.name(&quot;firstName&quot;).value(c.firstName());
+                writer.name(&quot;lastName&quot;).value(c.lastName());
+                writer.name(&quot;phone&quot;).value(c.phone());
+                writer.name(&quot;address&quot;).value(c.address());
+                writer.endObject();
+            }
+            writer.endArray();
+        }
+        return output + System.lineSeparator();
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

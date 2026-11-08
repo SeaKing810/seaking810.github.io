@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactServiceTest.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>ContactServiceTest.java</h1><p class="meta">src/test/java/edu/snhu/contactmanager/ContactServiceTest.java</p><p class="raw"><a href="ContactServiceTest.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+/** Sean McKenna | CS 499 | November 7, 2026. Service behavior and commit-boundary tests. */
+class ContactServiceTest {
+    static Contact sample(String id) { return new Contact(id, &quot;Alex&quot;, &quot;Rivera&quot;, &quot;2025550101&quot;, &quot;10 Sample Road&quot;); }
+
+    @Test void completeCrudAndSortedList() throws IOException {
+        ContactService service = new ContactService(new InMemoryContactRepository());
+        assertTrue(service.list().isEmpty());
+        service.add(sample(&quot;2&quot;)); service.add(sample(&quot;1&quot;));
+        assertEquals(List.of(&quot;1&quot;, &quot;2&quot;), service.list().stream().map(Contact::contactId).toList());
+        service.update(&quot;1&quot;, &quot;Taylor&quot;, &quot;Rivera&quot;, &quot;2025550102&quot;, &quot;20 Sample Road&quot;);
+        assertEquals(&quot;Taylor&quot;, service.find(&quot;1&quot;).firstName());
+        assertEquals(&quot;1&quot;, service.find(&quot;1&quot;).contactId());
+        service.delete(&quot;2&quot;);
+        assertEquals(1, service.list().size());
+    }
+
+    @Test void duplicatesNullAndMissingIdsRejected() throws IOException {
+        ContactService service = new ContactService(new InMemoryContactRepository());
+        service.add(sample(&quot;1&quot;));
+        assertThrows(IllegalArgumentException.class, () -&gt; service.add(sample(&quot;1&quot;)));
+        assertThrows(IllegalArgumentException.class, () -&gt; service.add(null));
+        assertThrows(IllegalArgumentException.class, () -&gt; service.find(&quot;missing&quot;));
+        assertThrows(IllegalArgumentException.class, () -&gt; service.delete(&quot;missing&quot;));
+        assertThrows(IllegalArgumentException.class, () -&gt; service.update(&quot;missing&quot;, &quot;A&quot;, &quot;B&quot;, &quot;0123456789&quot;, &quot;C&quot;));
+        assertEquals(List.of(sample(&quot;1&quot;)), service.list());
+    }
+
+    @Test void invalidLastFieldCannotPartiallyUpdateEarlierFields() throws IOException {
+        InMemoryContactRepository repository = new InMemoryContactRepository();
+        ContactService service = new ContactService(repository);
+        service.add(sample(&quot;1&quot;));
+        assertThrows(IllegalArgumentException.class,
+            () -&gt; service.update(&quot;1&quot;, &quot;Taylor&quot;, &quot;Morris&quot;, &quot;2025550199&quot;, &quot;X&quot;.repeat(31)));
+        assertEquals(sample(&quot;1&quot;), service.find(&quot;1&quot;));
+        assertEquals(sample(&quot;1&quot;), repository.load().get(&quot;1&quot;));
+    }
+
+    @Test void callerCannotMutateRepositoryOrServiceSnapshot() throws IOException {
+        InMemoryContactRepository repository = new InMemoryContactRepository();
+        Map&lt;String, Contact&gt; supplied = new TreeMap&lt;&gt;(Map.of(&quot;1&quot;, sample(&quot;1&quot;)));
+        repository.save(supplied); supplied.clear();
+        ContactService service = new ContactService(repository);
+        assertThrows(UnsupportedOperationException.class, () -&gt; repository.load().clear());
+        assertThrows(UnsupportedOperationException.class, () -&gt; service.list().clear());
+        assertEquals(sample(&quot;1&quot;), service.find(&quot;1&quot;));
+    }
+
+    @Test void failuresPreserveStateForAllMutations() throws IOException {
+        ContactRepository failing = new ContactRepository() {
+            public Map&lt;String, Contact&gt; load() { return Map.of(&quot;1&quot;, sample(&quot;1&quot;)); }
+            public void save(Map&lt;String, Contact&gt; contacts) throws IOException { throw new IOException(&quot;injected&quot;); }
+        };
+        ContactService service = new ContactService(failing);
+        assertThrows(IOException.class, () -&gt; service.add(sample(&quot;2&quot;)));
+        assertThrows(IOException.class, () -&gt; service.delete(&quot;1&quot;));
+        assertThrows(IOException.class, () -&gt; service.update(&quot;1&quot;, &quot;Taylor&quot;, &quot;B&quot;, &quot;2025550102&quot;, &quot;C&quot;));
+        assertEquals(List.of(sample(&quot;1&quot;)), service.list());
+    }
+
+    @Test void capacityAndKeyIntegrityEnforced() throws IOException {
+        Map&lt;String, Contact&gt; full = new TreeMap&lt;&gt;();
+        for (int i = 0; i &lt; ContactRepository.MAX_CONTACTS; i++) full.put(&quot;C&quot; + i, sample(&quot;C&quot; + i));
+        InMemoryContactRepository repository = new InMemoryContactRepository();
+        repository.save(full);
+        ContactService service = new ContactService(repository);
+        assertThrows(IllegalArgumentException.class, () -&gt; service.add(sample(&quot;extra&quot;)));
+        assertEquals(1000, service.list().size());
+        assertThrows(IllegalArgumentException.class, () -&gt; repository.save(Map.of(&quot;wrong&quot;, sample(&quot;1&quot;))));
+        assertEquals(1000, repository.load().size());
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

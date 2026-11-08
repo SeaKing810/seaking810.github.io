@@ -1,0 +1,42 @@
+REQUIREMENTS AND VERIFICATION MAP
+Sean McKenna | CS 499 | November 7, 2026
+
+Requirement                         Evidence in enhanced/src/test/java/edu/snhu/contactmanager
+Add/find/list/edit/delete           ContactServiceTest.completeCrudAndSortedList
+Every menu operation                ContactCliTest.everyMenuCommandAndCancellation
+Duplicate IDs and absent records    ContactServiceTest.duplicatesNullAndMissingIdsRejected
+Length boundaries                   ContactTest.exactBoundariesAccepted / eachLengthLimitEnforced
+Blank/control input and phone       ContactTest.requiredFieldsRejectUnsafeText / invalidPhoneRejected
+Reject invalid final edit field     ContactServiceTest.invalidLastFieldCannotPartiallyUpdateEarlierFields
+No mutable aliases                  ContactServiceTest.callerCannotMutateRepositoryOrServiceSnapshot
+Failure does not publish memory     ContactServiceTest.failuresPreserveStateForAllMutations
+Restart persistence                 JsonFileContactRepositoryTest.addEditDeletePersistAcrossReopens
+JSON escaping and Unicode           JsonFileContactRepositoryTest.unicodeAndJsonEscapingRoundTrip
+Malformed storage stays untouched   JsonFileContactRepositoryTest.malformedStoreFailsClosedAndBytesRemain
+Schema and record validity          JsonFileContactRepositoryTest.duplicateIdsAndSemanticallyInvalidDataRejected
+File and record bounds              JsonFileContactRepositoryTest.excessiveBytesAndInvalidUtf8Rejected /
+                                    recordLimitAcceptedThenRejected
+Write denial, move, atomic failure  JsonFileContactRepositoryTest.failedCommitPreservesDiskAndMemoryAndRemovesTemporaryFile
+Exclusive instance                  JsonFileContactRepositoryTest.secondInstanceRejectedAndLockReleasedOnClose
+Private permissions                 JsonFileContactRepositoryTest.posixStorageIsPrivateAndLoosePermissionsRejected
+Reject symlink data file            JsonFileContactRepositoryTest.symbolicDataFileRejectedWithoutTouchingTarget
+Closed storage / invalid directory  JsonFileContactRepositoryTest.closedRepositoryRefusesOperations /
+                                    fileCannotServeAsDirectory
+Safe error messages                 ContactCliTest.failedSaveDoesNotDisplaySuccessOrSensitiveException
+Incomplete/failed input             ContactCliTest.invalidChoiceAndIncompleteCommandDoNotChangeState /
+                                    brokenInputExitsWithoutLooping
+Actual separate application runs    evidence/cli-process-transcript.txt
+
+JUnit counts parameterized invocations separately: 55 enhanced tests, plus the
+8 unchanged baseline tests. Passing baseline tests alone did not prove persistence,
+blank-field rejection, numeric phone validation, or safe whole-record updates.
+The enhanced suite supplies those missing checks. No claim of measured coverage
+percentage, benchmark speedup, penetration testing, or Windows testing is made.
+
+Course outcomes
+1: Reviewable changes, acceptance criteria, decision log, and reviewer questions.
+   Applying later feedback remains outstanding.
+2: Source comments, user guide, evidence map, and accompanying Word narrative.
+3: Architecture and storage tradeoffs; stronger algorithm evidence is planned for CS 300.
+4: Working persistent contact workflows and reproducible automated verification.
+5: Input validation, rejected unsafe data, private files, and explicit failure handling.

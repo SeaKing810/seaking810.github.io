@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Main.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>Main.java</h1><p class="meta">src/main/java/edu/snhu/contactmanager/Main.java</p><p class="raw"><a href="Main.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+
+/**
+ * Sean McKenna | CS 499 Milestone Two | November 7, 2026.
+ * Composition root: connects the console, service, and local JSON repository.
+ * Startup fails closed when existing data cannot be loaded safely.
+ */
+public final class Main {
+    private Main() { }
+
+    public static void main(String[] args) {
+        if (args.length &gt; 1) {
+            System.err.println(&quot;Usage: Contact Manager [dedicated-data-directory]&quot;);
+            System.exit(2);
+        }
+        try {
+            Path directory = args.length == 1 ? Path.of(args[0]) : Path.of(&quot;contact-data&quot;);
+            try (JsonFileContactRepository repository = new JsonFileContactRepository(directory)) {
+                ContactService service = new ContactService(repository);
+                new ContactCli(service, new BufferedReader(new InputStreamReader(System.in,
+                    StandardCharsets.UTF_8)), new PrintWriter(System.out, true, StandardCharsets.UTF_8)).run();
+            }
+        } catch (IOException | InvalidPathException | SecurityException ex) {
+            System.err.println(&quot;Unable to open or use the contact store. Close other instances and check &quot;
+                + &quot;the directory, owner-only permissions, and JSON file. Existing data was not reset.&quot;);
+            System.exit(1);
+        }
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

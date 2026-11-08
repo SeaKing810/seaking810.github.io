@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InMemoryContactRepository.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>InMemoryContactRepository.java</h1><p class="meta">src/main/java/edu/snhu/contactmanager/InMemoryContactRepository.java</p><p class="raw"><a href="InMemoryContactRepository.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import java.util.Map;
+
+/**
+ * Sean McKenna | CS 499 Milestone Two | November 7, 2026.
+ * In-memory repository for isolated service tests without filesystem side effects.
+ */
+public final class InMemoryContactRepository implements ContactRepository {
+    private Map&lt;String, Contact&gt; stored = Map.of();
+
+    @Override
+    public Map&lt;String, Contact&gt; load() { return Map.copyOf(stored); }
+
+    @Override
+    public void save(Map&lt;String, Contact&gt; contacts) {
+        stored = Map.copyOf(ContactRepository.validatedCopy(contacts));
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contact.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>Contact.java</h1><p class="meta">src/main/java/edu/snhu/contactmanager/Contact.java</p><p class="raw"><a href="Contact.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+/**
+ * Sean McKenna | CS 499 Milestone Two | November 7, 2026.
+ * Immutable replacement for the CS 320 mutable Contact. Construction validates
+ * every field, so neither callers nor an unsuccessful edit can mutate live data.
+ */
+public record Contact(String contactId, String firstName, String lastName,
+                      String phone, String address) {
+    public Contact {
+        requireText(contactId, 10, &quot;Contact ID&quot;);
+        requireText(firstName, 10, &quot;First name&quot;);
+        requireText(lastName, 10, &quot;Last name&quot;);
+        requireText(address, 30, &quot;Address&quot;);
+        if (phone == null || !phone.matches(&quot;[0-9]{10}&quot;)) {
+            throw new IllegalArgumentException(&quot;Phone must contain exactly 10 ASCII digits.&quot;);
+        }
+    }
+
+    static void requireText(String value, int maximum, String label) {
+        if (value == null || value.isBlank() || value.length() &gt; maximum
+                || !value.equals(value.strip())
+                || value.codePoints().anyMatch(c -&gt; Character.isISOControl(c)
+                    || Character.getType(c) == Character.FORMAT)
+                || hasUnpairedSurrogate(value)) {
+            throw new IllegalArgumentException(label + &quot; must have 1-&quot; + maximum
+                + &quot; characters, without edge spaces or control characters.&quot;);
+        }
+    }
+
+    private static boolean hasUnpairedSurrogate(String value) {
+        for (int i = 0; i &lt; value.length(); i++) {
+            char c = value.charAt(i);
+            if (Character.isHighSurrogate(c)) {
+                if (++i == value.length() || !Character.isLowSurrogate(value.charAt(i))) return true;
+            } else if (Character.isLowSurrogate(c)) return true;
+        }
+        return false;
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

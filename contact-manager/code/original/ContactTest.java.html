@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactTest.java | Sean McKenna</title><link rel="stylesheet" href="../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../contact-manager.html">Contact Manager</a><a href="../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">original source</p><h1>ContactTest.java</h1><p class="meta">ContactTest.java</p><p class="raw"><a href="ContactTest.java">Open raw Java file</a> · <a href="../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class ContactTest {
+
+    @Test
+    public void testValidContactCreation() {
+        Contact contact = new Contact(&quot;1&quot;, &quot;John&quot;, &quot;Doe&quot;, &quot;1234567890&quot;, &quot;123 Main Street&quot;);
+        assertEquals(&quot;John&quot;, contact.getFirstName());
+    }
+
+    @Test
+    public void testInvalidContactId() {
+        assertThrows(IllegalArgumentException.class, () -&gt; {
+            new Contact(null, &quot;John&quot;, &quot;Doe&quot;, &quot;1234567890&quot;, &quot;123 Main Street&quot;);
+        });
+    }
+
+    @Test
+    public void testInvalidFirstNameLength() {
+        assertThrows(IllegalArgumentException.class, () -&gt; {
+            new Contact(&quot;1&quot;, &quot;JohnathanLong&quot;, &quot;Doe&quot;, &quot;1234567890&quot;, &quot;123 Main Street&quot;);
+        });
+    }
+
+    @Test
+    public void testInvalidPhoneLength() {
+        assertThrows(IllegalArgumentException.class, () -&gt; {
+            new Contact(&quot;1&quot;, &quot;John&quot;, &quot;Doe&quot;, &quot;12345&quot;, &quot;123 Main Street&quot;);
+        });
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

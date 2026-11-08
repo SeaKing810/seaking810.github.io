@@ -1,0 +1,46 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactTest.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>ContactTest.java</h1><p class="meta">src/test/java/edu/snhu/contactmanager/ContactTest.java</p><p class="raw"><a href="ContactTest.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import static org.junit.jupiter.api.Assertions.*;
+
+/** Sean McKenna | CS 499 | November 7, 2026. Domain boundaries and invalid-input tests. */
+class ContactTest {
+    @Test void exactBoundariesAccepted() {
+        Contact c = new Contact(&quot;1234567890&quot;, &quot;A&quot;.repeat(10), &quot;B&quot;.repeat(10),
+            &quot;0123456789&quot;, &quot;C&quot;.repeat(30));
+        assertEquals(30, c.address().length());
+        assertEquals(&quot;0123456789&quot;, c.phone());
+    }
+
+    @Test void eachLengthLimitEnforced() {
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(&quot;X&quot;.repeat(11), &quot;A&quot;, &quot;B&quot;, &quot;0123456789&quot;, &quot;C&quot;));
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(&quot;1&quot;, &quot;X&quot;.repeat(11), &quot;B&quot;, &quot;0123456789&quot;, &quot;C&quot;));
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(&quot;1&quot;, &quot;A&quot;, &quot;X&quot;.repeat(11), &quot;0123456789&quot;, &quot;C&quot;));
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(&quot;1&quot;, &quot;A&quot;, &quot;B&quot;, &quot;0123456789&quot;, &quot;X&quot;.repeat(31)));
+    }
+
+    @ParameterizedTest @NullAndEmptySource
+    @ValueSource(strings = {&quot; &quot;, &quot;\t&quot;, &quot; A&quot;, &quot;A &quot;, &quot;A\nB&quot;, &quot;A\u001bB&quot;, &quot;A\u202eB&quot;})
+    void requiredFieldsRejectUnsafeText(String value) {
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(value, &quot;A&quot;, &quot;B&quot;, &quot;0123456789&quot;, &quot;C&quot;));
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(&quot;1&quot;, value, &quot;B&quot;, &quot;0123456789&quot;, &quot;C&quot;));
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(&quot;1&quot;, &quot;A&quot;, value, &quot;0123456789&quot;, &quot;C&quot;));
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(&quot;1&quot;, &quot;A&quot;, &quot;B&quot;, &quot;0123456789&quot;, value));
+    }
+
+    @ParameterizedTest @NullAndEmptySource
+    @ValueSource(strings = {&quot;123456789&quot;, &quot;12345678901&quot;, &quot;abcdefghij&quot;, &quot;123-567890&quot;, &quot;１２３４５６７８９０&quot;, &quot;123456789 &quot;})
+    void invalidPhoneRejected(String phone) {
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(&quot;1&quot;, &quot;A&quot;, &quot;B&quot;, phone, &quot;C&quot;));
+    }
+
+    @Test void unicodeNamesAndEscapedCharactersAccepted() {
+        Contact c = new Contact(&quot;1&quot;, &quot;Zoë&quot;, &quot;O&#x27;Neil&quot;, &quot;0000000000&quot;, &quot;10 \&quot;A\&quot; \\ Road&quot;);
+        assertEquals(&quot;Zoë&quot;, c.firstName());
+        assertThrows(IllegalArgumentException.class, () -&gt; new Contact(&quot;1&quot;, &quot;\ud800&quot;, &quot;B&quot;, &quot;0123456789&quot;, &quot;C&quot;));
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

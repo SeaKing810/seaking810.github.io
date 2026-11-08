@@ -1,0 +1,45 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactServiceTest.java | Sean McKenna</title><link rel="stylesheet" href="../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../contact-manager.html">Contact Manager</a><a href="../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">original source</p><h1>ContactServiceTest.java</h1><p class="meta">ContactServiceTest.java</p><p class="raw"><a href="ContactServiceTest.java">Open raw Java file</a> · <a href="../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class ContactServiceTest {
+
+    @Test
+    public void testAddContact() {
+        ContactService service = new ContactService();
+        Contact contact = new Contact(&quot;1&quot;, &quot;John&quot;, &quot;Doe&quot;, &quot;1234567890&quot;, &quot;123 Main Street&quot;);
+        service.addContact(contact);
+    }
+
+    @Test
+    public void testDuplicateContactId() {
+        ContactService service = new ContactService();
+        Contact contact1 = new Contact(&quot;1&quot;, &quot;John&quot;, &quot;Doe&quot;, &quot;1234567890&quot;, &quot;123 Main Street&quot;);
+        Contact contact2 = new Contact(&quot;1&quot;, &quot;Jane&quot;, &quot;Smith&quot;, &quot;0987654321&quot;, &quot;456 Oak Street&quot;);
+
+        service.addContact(contact1);
+
+        assertThrows(IllegalArgumentException.class, () -&gt; {
+            service.addContact(contact2);
+        });
+    }
+
+    @Test
+    public void testDeleteContact() {
+        ContactService service = new ContactService();
+        Contact contact = new Contact(&quot;1&quot;, &quot;John&quot;, &quot;Doe&quot;, &quot;1234567890&quot;, &quot;123 Main Street&quot;);
+        service.addContact(contact);
+        service.deleteContact(&quot;1&quot;);
+    }
+
+    @Test
+    public void testUpdateFirstName() {
+        ContactService service = new ContactService();
+        Contact contact = new Contact(&quot;1&quot;, &quot;John&quot;, &quot;Doe&quot;, &quot;1234567890&quot;, &quot;123 Main Street&quot;);
+        service.addContact(contact);
+
+        service.updateFirstName(&quot;1&quot;, &quot;Jane&quot;);
+
+        assertEquals(&quot;Jane&quot;, contact.getFirstName());
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

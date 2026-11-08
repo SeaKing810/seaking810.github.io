@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactCliTest.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>ContactCliTest.java</h1><p class="meta">src/test/java/edu/snhu/contactmanager/ContactCliTest.java</p><p class="raw"><a href="ContactCliTest.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+/** Sean McKenna | CS 499 | November 7, 2026. User commands and safe error reporting. */
+class ContactCliTest {
+    private String run(ContactService service, String commands) throws IOException {
+        StringWriter output = new StringWriter();
+        new ContactCli(service, new BufferedReader(new StringReader(commands)), new PrintWriter(output)).run();
+        return output.toString();
+    }
+
+    @Test void everyMenuCommandAndCancellation() throws IOException {
+        ContactService service = new ContactService(new InMemoryContactRepository());
+        String output = run(service, &quot;3\n1\n1\nAlex\nRivera\n2025550101\n10 Sample Road\n2\n1\n3\n&quot;
+            + &quot;4\n1\nTaylor\nSmith\n2025550102\n20 Example Road\n5\n1\nNO\n2\n1\n5\n1\nYES\n0\n&quot;);
+        for (String expected : new String[] {&quot;No contacts saved.&quot;, &quot;Contact saved.&quot;, &quot;Alex Rivera&quot;,
+                &quot;Contact updated.&quot;, &quot;Taylor Smith&quot;, &quot;Deletion cancelled.&quot;, &quot;Contact deleted.&quot;, &quot;Goodbye.&quot;}) {
+            assertTrue(output.contains(expected), expected);
+        }
+        assertTrue(service.list().isEmpty());
+    }
+
+    @Test void invalidChoiceAndIncompleteCommandDoNotChangeState() throws IOException {
+        ContactService service = new ContactService(new InMemoryContactRepository());
+        String output = run(service, &quot;x\n2\nmissing\n1\n1\nAlex\n&quot;);
+        assertTrue(output.contains(&quot;Choose 0&quot;));
+        assertTrue(output.contains(&quot;Contact not found.&quot;));
+        assertTrue(output.contains(&quot;incomplete command was cancelled&quot;));
+        assertTrue(service.list().isEmpty());
+    }
+
+    @Test void failedSaveDoesNotDisplaySuccessOrSensitiveException() throws IOException {
+        ContactRepository failing = new ContactRepository() {
+            public Map&lt;String, Contact&gt; load() { return Map.of(); }
+            public void save(Map&lt;String, Contact&gt; contacts) throws IOException {
+                throw new IOException(&quot;PRIVATE_CONTACT_OR_PATH&quot;);
+            }
+        };
+        ContactService service = new ContactService(failing);
+        String output = run(service, &quot;1\n1\nAlex\nRivera\n2025550101\n10 Sample Road\n0\n&quot;);
+        assertTrue(output.contains(&quot;Operation failed&quot;));
+        assertFalse(output.contains(&quot;Contact saved.&quot;));
+        assertFalse(output.contains(&quot;PRIVATE_CONTACT_OR_PATH&quot;));
+        assertTrue(service.list().isEmpty());
+    }
+
+    @Test void brokenInputExitsWithoutLooping() throws IOException {
+        ContactService service = new ContactService(new InMemoryContactRepository());
+        BufferedReader broken = new BufferedReader(new StringReader(&quot;&quot;)) {
+            @Override public String readLine() throws IOException { throw new IOException(&quot;unavailable&quot;); }
+        };
+        StringWriter output = new StringWriter();
+        new ContactCli(service, broken, new PrintWriter(output)).run();
+        assertTrue(output.toString().contains(&quot;incomplete command was cancelled&quot;));
+        assertTrue(service.list().isEmpty());
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

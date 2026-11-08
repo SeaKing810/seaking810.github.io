@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ContactService.java | Sean McKenna</title><link rel="stylesheet" href="../../../../../../../../../portfolio.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../../../../../../../../index.html">Sean McKenna · ePortfolio</a><a href="../../../../../../../../../contact-manager.html">Contact Manager</a><a href="../../../../../../../../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced source</p><h1>ContactService.java</h1><p class="meta">src/main/java/edu/snhu/contactmanager/ContactService.java</p><p class="raw"><a href="ContactService.java">Open raw Java file</a> · <a href="../../../../../../../../../contact-manager.html#source">Return to source index</a></p></div><pre><code>package edu.snhu.contactmanager;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+
+/**
+ * Sean McKenna | CS 499 Milestone Two | November 7, 2026.
+ * Coordinates contact operations. Memory changes only after persistence succeeds.
+ * Single-threaded local application; repository implementations own storage policy.
+ */
+public final class ContactService {
+    private final ContactRepository repository;
+    private Map&lt;String, Contact&gt; contacts;
+
+    public ContactService(ContactRepository repository) throws IOException {
+        this.repository = Objects.requireNonNull(repository);
+        contacts = ContactRepository.validatedCopy(repository.load());
+    }
+
+    public Contact find(String id) {
+        Contact.requireText(id, 10, &quot;Contact ID&quot;);
+        Contact contact = contacts.get(id);
+        if (contact == null) throw new IllegalArgumentException(&quot;Contact not found.&quot;);
+        return contact;
+    }
+
+    public List&lt;Contact&gt; list() { return List.copyOf(contacts.values()); }
+
+    public void add(Contact contact) throws IOException {
+        if (contact == null) throw new IllegalArgumentException(&quot;Contact is required.&quot;);
+        if (contacts.containsKey(contact.contactId())) {
+            throw new IllegalArgumentException(&quot;Duplicate contact ID.&quot;);
+        }
+        Map&lt;String, Contact&gt; candidate = new TreeMap&lt;&gt;(contacts);
+        candidate.put(contact.contactId(), contact);
+        commit(candidate);
+    }
+
+    public void update(String id, String first, String last, String phone, String address)
+            throws IOException {
+        find(id);
+        // Validate ALL replacement fields before copying or committing any state.
+        Contact replacement = new Contact(id, first, last, phone, address);
+        Map&lt;String, Contact&gt; candidate = new TreeMap&lt;&gt;(contacts);
+        candidate.put(id, replacement);
+        commit(candidate);
+    }
+
+    public void delete(String id) throws IOException {
+        find(id);
+        Map&lt;String, Contact&gt; candidate = new TreeMap&lt;&gt;(contacts);
+        candidate.remove(id);
+        commit(candidate);
+    }
+
+    private void commit(Map&lt;String, Contact&gt; candidate) throws IOException {
+        Map&lt;String, Contact&gt; validated = ContactRepository.validatedCopy(candidate);
+        repository.save(validated);
+        contacts = validated;
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Software Design and Engineering</footer></body></html>

@@ -1,0 +1,30 @@
+VERIFICATION RESULTS
+Date: November 7, 2026
+Platform: macOS-26.5.2-arm64-arm-64bit
+java version "26.0.1" 2026-04-21
+Java(TM) SE Runtime Environment (build 26.0.1+8-34)
+Java HotSpot(TM) 64-Bit Server VM (build 26.0.1+8-34, mixed mode, sharing)
+
+Build: javac --release 17 -encoding UTF-8 -Xlint:all
+Original JUnit tests: 8 found, 8 passed, 0 failed, 0 skipped.
+Enhanced JUnit tests: 55 found, 55 passed, 0 failed, 0 skipped.
+Actual application-process checks: 4 passed.
+Original source preservation: all four SHA-256 hashes match the Module One originals.
+
+Observed process sequence
+1. Create a contact, commit, and quit.
+2. Restart, find the original record, edit, list the result, and quit.
+3. Restart, find the edit, delete with confirmation, confirm an empty list, and quit.
+4. Put malformed data in the test store; verify startup exits with code 1 and
+   the malformed file remains byte-for-byte unchanged.
+
+Failure injection covers partial temporary write/access denial, pre-commit move
+failure, and unsupported atomic replacement. Tests verify disk and memory remain
+unchanged in those simulated cases. This is not a hardware fault or crash test.
+
+JUnit's console launcher reports a JDK 26 reflective-final-field compatibility
+warning. Tests complete successfully; application compilation emits no warnings.
+The Java 17 release target was compiled on JDK 26.0.1. No separate Java 17,
+Windows, Android, or Maven runtime verification was performed for this milestone.
+All demonstrations use fictional contacts. This artifact is ready for milestone
+review; final polish and public portfolio publication follow instructor feedback.
