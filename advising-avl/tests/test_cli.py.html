@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>test_cli.py | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">tests file</p><h1>test_cli.py</h1><p class="meta">tests/test_cli.py</p><p class="raw"><a href="test_cli.py">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>&quot;&quot;&quot;Compare real processes; preserve original workflow for supported inputs.&quot;&quot;&quot;
+import subprocess, tempfile
+from pathlib import Path
+root=Path(__file__).resolve().parents[1]
+def run(binary, commands):
+ p=subprocess.run([str(root/&#x27;build&#x27;/binary)],input=commands,text=True,capture_output=True,cwd=root,timeout=20)
+ assert p.returncode==0, p.stderr
+ return p.stdout
+with tempfile.TemporaryDirectory() as temp:
+ p=Path(temp)
+ (p/&#x27;good.csv&#x27;).write_text(&#x27;A,Alpha\nB,Beta,A\n&#x27;)
+ (p/&#x27;bad.csv&#x27;).write_text(&#x27;X,Broken,MISSING\n&#x27;)
+ scenarios = {
+ &#x27;course list and prerequisites&#x27;:&#x27;1\noriginal/ABCU_Advising_Program_Input.csv\n2\n3\n csci400 \n9\n&#x27;,
+ &#x27;empty state menu and EOF&#x27;:&#x27;2\n3\nxyz\n\n&#x27;,
+ &#x27;missing file&#x27;:&#x27;1\nnot-found.csv\n9\n&#x27;,
+ &#x27;rejected replacement&#x27;:f&#x27;1\n{p}/good.csv\n1\n{p}/bad.csv\n2\n3\nB\n9\n&#x27;,
+ &#x27;valid replacement&#x27;:f&#x27;1\noriginal/ABCU_Advising_Program_Input.csv\n1\n{p}/good.csv\n2\n9\n&#x27;,
+ &#x27;quoted path and missing course&#x27;:f&#x27;1\n&quot;{p}/good.csv&quot;\n3\nZ\n3\n\n9\n&#x27;,
+ &#x27;EOF during load&#x27;:&#x27;1\n&#x27;,
+ }
+ for name,commands in scenarios.items():
+  before,after=run(&#x27;original&#x27;,commands),run(&#x27;advising&#x27;,commands)
+  assert before==after, name
+  print(&#x27;PASS CLI equivalence:&#x27;,name)
+ print(&#x27;RESULT: 7 original/enhanced CLI scenarios matched exactly.&#x27;)
+ transcript=run(&#x27;advising&#x27;,scenarios[&#x27;rejected replacement&#x27;])
+ (root/&#x27;evidence/cli-rejected-replacement.txt&#x27;).write_text(transcript.replace(str(p),&#x27;&lt;temporary fixture directory&gt;&#x27;))
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>make_baseline.py | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">benchmark file</p><h1>make_baseline.py</h1><p class="meta">benchmark/make_baseline.py</p><p class="raw"><a href="make_baseline.py">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>&quot;&quot;&quot;Derive instrumentation from the unchanged original, keeping its tree algorithm.
+Only comparison counters and iterative height inspection are added. No balancing.
+&quot;&quot;&quot;
+from pathlib import Path
+root=Path(__file__).resolve().parents[1]
+s=(root/&#x27;original/ProjectTwo.cpp&#x27;).read_text()
+s=s[s.index(&#x27;class BinarySearchTree&#x27;):s.index(&#x27;// Removes whitespace&#x27;)]
+s=s.replace(&#x27;BinarySearchTree&#x27;,&#x27;BaselineTree&#x27;)
+s=s.replace(&#x27;    Node* root;&#x27;,&#x27;    Node* root;\n    inline static std::size_t comparisons_ = 0;&#x27;)
+for expr in [&#x27;course.courseNumber &lt; node-&gt;course.courseNumber&#x27;,&#x27;course.courseNumber &gt; node-&gt;course.courseNumber&#x27;,&#x27;courseNumber == current-&gt;course.courseNumber&#x27;,&#x27;courseNumber &lt; current-&gt;course.courseNumber&#x27;]:
+ s=s.replace(&#x27;(&#x27;+expr+&#x27;)&#x27;,&#x27;(++comparisons_, &#x27;+expr+&#x27;)&#x27;)
+marker=&#x27;    BaselineTree() : root(nullptr) {}&#x27;
+s=s.replace(marker,marker+&#x27;&#x27;&#x27;
+    std::size_t comparisons() const { return comparisons_; }
+    void resetComparisons() const { comparisons_ = 0; }
+    int height() const {
+        int height = 0;
+        std::vector&lt;std::pair&lt;const Node*,int&gt;&gt; pending;
+        if (root) pending.push_back({root,1});
+        while (!pending.empty()) {
+            auto p = pending.back(); pending.pop_back(); height = std::max(height,p.second);
+            if (p.first-&gt;left) pending.push_back({p.first-&gt;left,p.second+1});
+            if (p.first-&gt;right) pending.push_back({p.first-&gt;right,p.second+1});
+        }
+        return height;
+    }
+&#x27;&#x27;&#x27;)
+(root/&#x27;benchmark/BaselineTree.hpp&#x27;).write_text(&#x27;// Generated from original/ProjectTwo.cpp by make_baseline.py.\n// Do not edit: comparison counters and height observation only.\n&#x27;+s)
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

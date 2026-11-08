@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>test-run.txt | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">evidence file</p><h1>test-run.txt</h1><p class="meta">evidence/test-run.txt</p><p class="raw"><a href="test-run.txt">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>PASS empty and single-node behavior
+PASS rotation CBA
+PASS rotation ABC
+PASS rotation CAB
+PASS rotation ACB
+PASS duplicate preserves complete original record
+PASS property sequence 0
+PASS property sequence 1
+PASS property sequence 2
+PASS clear and swap ownership
+PASS original course fixture
+PASS normalization BOM CRLF trailing blanks and forward references
+PASS valid replacement removes prior records
+PASS empty file preserves prior catalog
+PASS blank file preserves prior catalog
+PASS missing title preserves prior catalog
+PASS missing course preserves prior catalog
+PASS missing comma preserves prior catalog
+PASS duplicate normalized keys preserves prior catalog
+PASS missing prerequisite preserves prior catalog
+PASS self prerequisite preserves prior catalog
+PASS duplicate prerequisite preserves prior catalog
+PASS interior prerequisite gap preserves prior catalog
+PASS quoted fields preserves prior catalog
+PASS NUL byte preserves prior catalog
+PASS overlong key preserves prior catalog
+PASS overlong title preserves prior catalog
+PASS overlong prerequisite preserves prior catalog
+PASS overlong line preserves prior catalog
+PASS maximum key and title lengths accepted
+PASS maximum line length accepted
+PASS file byte boundary and limit
+PASS record boundary and limit
+PASS prerequisite boundary and limit
+PASS missing file preserves catalog
+PASS I/O failure preserves catalog
+PASS indirect cycles retain original policy
+RESULT: 37 test groups passed.
+PASS CLI equivalence: course list and prerequisites
+PASS CLI equivalence: empty state menu and EOF
+PASS CLI equivalence: missing file
+PASS CLI equivalence: rejected replacement
+PASS CLI equivalence: valid replacement
+PASS CLI equivalence: quoted path and missing course
+PASS CLI equivalence: EOF during load
+RESULT: 7 original/enhanced CLI scenarios matched exactly.
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

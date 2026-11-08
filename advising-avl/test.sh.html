@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>test.sh | Sean McKenna</title><link rel="stylesheet" href="../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../index.html">Sean McKenna · ePortfolio</a><a href="../contact-manager.html">Contact Manager</a><a href="../advising-avl.html">Course Advising</a><a href="../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">setup file</p><h1>test.sh</h1><p class="meta">test.sh</p><p class="raw"><a href="test.sh">Open raw file</a> · <a href="../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>#!/bin/sh
+set -eu
+cd &quot;$(dirname &quot;$0&quot;)&quot;
+mkdir -p build
+CXX=${CXX:-clang++}
+&quot;$CXX&quot; -std=c++17 -Wall -Wextra -Wpedantic -Werror -O2 enhanced/ProjectTwo.cpp -o build/advising
+&quot;$CXX&quot; -std=c++17 -Wall -Wextra -Wpedantic -Werror -O2 original/ProjectTwo.cpp -o build/original
+&quot;$CXX&quot; -std=c++17 -Wall -Wextra -Wpedantic -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer tests/test_advising.cpp -o build/tests
+./build/tests
+python3 tests/test_cli.py
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

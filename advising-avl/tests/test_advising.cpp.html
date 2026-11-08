@@ -1,0 +1,130 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>test_advising.cpp | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">tests file</p><h1>test_advising.cpp</h1><p class="meta">tests/test_advising.cpp</p><p class="raw"><a href="test_advising.cpp">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>// Behavioral, property, and input-boundary tests for the complete enhancement.
+#define ADVISING_NO_MAIN
+#include &quot;../enhanced/ProjectTwo.cpp&quot;
+#include &lt;functional&gt;
+#include &lt;map&gt;
+#include &lt;numeric&gt;
+#include &lt;random&gt;
+#include &lt;sstream&gt;
+
+void require(bool value, const string&amp; why) { if (!value) throw runtime_error(why); }
+Course course(string key) { return {key, &quot;Title &quot; + key, {}}; }
+string key(int n) { string s = to_string(n); return &quot;C&quot; + string(5 - s.size(), &#x27;0&#x27;) + s; }
+struct Capture {
+    ostringstream output; streambuf* old;
+    Capture() : old(cout.rdbuf(output.rdbuf())) {}
+    ~Capture() { cout.rdbuf(old); }
+};
+bool load(const string&amp; text, AvlTree&amp; tree) {
+    istringstream in(text); Capture quiet; return loadCoursesFromStream(in, tree);
+}
+void rejected(const string&amp; text) {
+    AvlTree tree; require(load(&quot;KEEP,Retained\n&quot;, tree), &quot;setup&quot;);
+    require(!load(text, tree), &quot;invalid file accepted&quot;);
+    require(tree.size() == 1 &amp;&amp; tree.find(&quot;KEEP&quot;) &amp;&amp; tree.invariantsHold(), &quot;active state changed&quot;);
+}
+int main() {
+    size_t passed = 0;
+    auto test = [&amp;](const string&amp; name, const function&lt;void()&gt;&amp; action) {
+        try { action(); ++passed; cout &lt;&lt; &quot;PASS &quot; &lt;&lt; name &lt;&lt; &#x27;\n&#x27;; }
+        catch (const exception&amp; e) { cerr &lt;&lt; &quot;FAIL &quot; &lt;&lt; name &lt;&lt; &quot;: &quot; &lt;&lt; e.what() &lt;&lt; &#x27;\n&#x27;; exit(1); }
+    };
+    test(&quot;empty and single-node behavior&quot;, [] {
+        AvlTree t; require(t.empty() &amp;&amp; t.height() == 0 &amp;&amp; !t.find(&quot;X&quot;) &amp;&amp; t.invariantsHold(), &quot;empty&quot;);
+        require(t.insert(course(&quot;B&quot;)) &amp;&amp; t.height() == 1 &amp;&amp; t.find(&quot;B&quot;), &quot;single&quot;);
+    });
+    for (const auto&amp; sequence : vector&lt;vector&lt;string&gt;&gt;{{&quot;C&quot;,&quot;B&quot;,&quot;A&quot;},{&quot;A&quot;,&quot;B&quot;,&quot;C&quot;},{&quot;C&quot;,&quot;A&quot;,&quot;B&quot;},{&quot;A&quot;,&quot;C&quot;,&quot;B&quot;}}) {
+        test(&quot;rotation &quot; + sequence[0] + sequence[1] + sequence[2], [=] {
+            AvlTree t;
+            for (const auto&amp; k : sequence) { require(t.insert(course(k)), &quot;insert&quot;); require(t.invariantsHold(), &quot;invariant&quot;); }
+            require(t.height() == 2, &quot;height&quot;);
+            require(t.rotations() == (sequence[1] == &quot;B&quot; ? 1U : 2U), &quot;rotation count&quot;);
+            require(t.ordered()[0].courseNumber == &quot;A&quot; &amp;&amp; t.ordered()[2].courseNumber == &quot;C&quot;, &quot;order&quot;);
+        });
+    }
+    test(&quot;duplicate preserves complete original record&quot;, [] {
+        AvlTree t; t.insert({&quot;A&quot;,&quot;Original&quot;,{&quot;B&quot;}});
+        require(!t.insert({&quot;A&quot;,&quot;Replacement&quot;,{}}), &quot;accepted duplicate&quot;);
+        require(t.size() == 1 &amp;&amp; t.find(&quot;A&quot;)-&gt;title == &quot;Original&quot; &amp;&amp; t.find(&quot;A&quot;)-&gt;prerequisites == vector&lt;string&gt;{&quot;B&quot;}, &quot;mutated&quot;);
+    });
+    for (int mode = 0; mode &lt; 3; ++mode) test(&quot;property sequence &quot; + to_string(mode), [=] {
+        vector&lt;int&gt; values(2000); iota(values.begin(), values.end(), 0);
+        if (mode == 1) reverse(values.begin(), values.end());
+        if (mode == 2) { mt19937 rng(499); shuffle(values.begin(), values.end(), rng); }
+        AvlTree t; map&lt;string, Course&gt; expected;
+        for (int n : values) {
+            auto c = course(key(n)); expected.emplace(c.courseNumber, c);
+            require(t.insert(c) &amp;&amp; t.invariantsHold(), &quot;insert invariant&quot;);
+            auto ordered = t.ordered(); require(ordered.size() == expected.size(), &quot;size&quot;);
+            size_t i = 0;
+            for (const auto&amp; entry : expected) require(ordered[i++].courseNumber == entry.first, &quot;ordering differs from map&quot;);
+        }
+        for (int n : values) require(t.find(key(n))-&gt;title == &quot;Title &quot; + key(n), &quot;lookup mismatch&quot;);
+        require(!t.find(&quot;ABSENT&quot;) &amp;&amp; t.height() &lt;= 16, &quot;height or missing lookup&quot;);
+    });
+    test(&quot;clear and swap ownership&quot;, [] {
+        AvlTree a,b; a.insert(course(&quot;A&quot;)); b.insert(course(&quot;B&quot;)); b.insert(course(&quot;C&quot;));
+        a.swap(b); require(a.size()==2 &amp;&amp; b.size()==1 &amp;&amp; a.find(&quot;B&quot;) &amp;&amp; b.find(&quot;A&quot;), &quot;swap&quot;);
+        b.clear(); b.clear(); require(b.empty() &amp;&amp; b.invariantsHold() &amp;&amp; a.invariantsHold(), &quot;clear&quot;);
+    });
+    test(&quot;original course fixture&quot;, [] {
+        AvlTree t; Capture quiet; require(loadCourses(&quot;original/ABCU_Advising_Program_Input.csv&quot;,t), &quot;load&quot;);
+        require(t.size()==8 &amp;&amp; t.find(&quot;CSCI400&quot;)-&gt;prerequisites.size()==2 &amp;&amp; t.invariantsHold(), &quot;records&quot;);
+    });
+    test(&quot;normalization BOM CRLF trailing blanks and forward references&quot;, [] {
+        AvlTree t;
+        require(load(&quot;\xEF\xBB\xBF a , Alpha , b ,\r\n\r\n b,Beta,,\r\n&quot;,t), &quot;format&quot;);
+        require(t.find(&quot;A&quot;)-&gt;prerequisites == vector&lt;string&gt;{&quot;B&quot;}, &quot;normalize&quot;);
+    });
+    test(&quot;valid replacement removes prior records&quot;, [] {
+        AvlTree t; require(load(&quot;A,Alpha\n&quot;,t) &amp;&amp; load(&quot;B,Beta&quot;,t), &quot;load&quot;);
+        require(t.size()==1 &amp;&amp; !t.find(&quot;A&quot;) &amp;&amp; t.find(&quot;B&quot;), &quot;replace&quot;);
+    });
+    vector&lt;pair&lt;string,string&gt;&gt; invalid = {
+        {&quot;empty file&quot;,&quot;&quot;}, {&quot;blank file&quot;,&quot; \n\n&quot;}, {&quot;missing title&quot;,&quot;A,\n&quot;},
+        {&quot;missing course&quot;,&quot; ,Alpha\n&quot;}, {&quot;missing comma&quot;,&quot;A\n&quot;},
+        {&quot;duplicate normalized keys&quot;,&quot;a,Alpha\n A ,Other\n&quot;},
+        {&quot;missing prerequisite&quot;,&quot;A,Alpha,B\n&quot;}, {&quot;self prerequisite&quot;,&quot;A,Alpha,a\n&quot;},
+        {&quot;duplicate prerequisite&quot;,&quot;A,Alpha,B,b\nB,Beta\n&quot;},
+        {&quot;interior prerequisite gap&quot;,&quot;A,Alpha,,B\nB,Beta\n&quot;},
+        {&quot;quoted fields&quot;,&quot;A,\&quot;Alpha, Beta\&quot;\n&quot;},
+        {&quot;NUL byte&quot;,string(&quot;A,A\0lpha\n&quot;,10)},
+        {&quot;overlong key&quot;,string(33,&#x27;A&#x27;)+&quot;,Title\n&quot;},
+        {&quot;overlong title&quot;,&quot;A,&quot;+string(257,&#x27;T&#x27;)+&quot;\n&quot;},
+        {&quot;overlong prerequisite&quot;,&quot;A,Title,&quot;+string(33,&#x27;B&#x27;)+&quot;\n&quot;},
+        {&quot;overlong line&quot;,string(4097,&#x27; &#x27;) + &quot;\n&quot;}
+    };
+    for (const auto&amp; item : invalid) test(item.first + &quot; preserves prior catalog&quot;, [=] { rejected(item.second); });
+    test(&quot;maximum key and title lengths accepted&quot;, [] {
+        AvlTree t; require(load(string(32,&#x27;A&#x27;)+&quot;,&quot;+string(256,&#x27;T&#x27;)+&quot;\n&quot;,t), &quot;boundary&quot;);
+    });
+    test(&quot;maximum line length accepted&quot;, [] { AvlTree t; require(load(&quot;A,T&quot;+string(4093,&#x27; &#x27;)+&quot;\n&quot;,t), &quot;line boundary&quot;); });
+    test(&quot;file byte boundary and limit&quot;, [] {
+        AvlTree t; string exact = string(Limits::fileBytes-4,&#x27;\n&#x27;)+&quot;A,T\n&quot;;
+        require(load(exact,t), &quot;exact byte limit&quot;); rejected(exact+&quot;\n&quot;);
+    });
+    test(&quot;record boundary and limit&quot;, [] {
+        string data; for(int i=0;i&lt;10000;++i) data += key(i)+&quot;,Title\n&quot;;
+        AvlTree t; require(load(data,t) &amp;&amp; t.size()==10000 &amp;&amp; t.invariantsHold(), &quot;record boundary&quot;);
+        rejected(data+&quot;EXTRA,Title\n&quot;);
+    });
+    test(&quot;prerequisite boundary and limit&quot;, [] {
+        string data=&quot;A,Title&quot;;
+        for(int i=0;i&lt;32;++i) data+=&quot;,&quot;+key(i);
+        string tail=&quot;\n&quot;; for(int i=0;i&lt;33;++i) tail+=key(i)+&quot;,Title\n&quot;;
+        AvlTree t; require(load(data+tail,t), &quot;32 prerequisites&quot;); rejected(data+&quot;,&quot;+key(32)+tail);
+    });
+    test(&quot;missing file preserves catalog&quot;, [] {
+        AvlTree t; t.insert(course(&quot;KEEP&quot;)); Capture quiet;
+        require(!loadCourses(&quot;does-not-exist.csv&quot;,t) &amp;&amp; t.find(&quot;KEEP&quot;), &quot;missing file&quot;);
+    });
+    test(&quot;I/O failure preserves catalog&quot;, [] {
+        AvlTree t; t.insert(course(&quot;KEEP&quot;)); istringstream in(&quot;A,Alpha&quot;); in.setstate(ios::badbit);
+        Capture quiet; require(!loadCoursesFromStream(in,t) &amp;&amp; t.find(&quot;KEEP&quot;), &quot;bad stream&quot;);
+    });
+    test(&quot;indirect cycles retain original policy&quot;, [] {
+        AvlTree t; require(load(&quot;A,Alpha,B\nB,Beta,A\n&quot;,t), &quot;baseline allows indirect cycles&quot;);
+    });
+    cout &lt;&lt; &quot;RESULT: &quot; &lt;&lt; passed &lt;&lt; &quot; test groups passed.\n&quot;;
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

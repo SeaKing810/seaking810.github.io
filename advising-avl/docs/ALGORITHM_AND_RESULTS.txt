@@ -1,0 +1,87 @@
+ALGORITHM AND PERFORMANCE ANALYSIS
+Sean McKenna | CS 499 | November 15, 2026
+
+Problem and choice
+The original BST inserts keys recursively without balancing. Sorted input
+creates a chain, giving O(n) worst-case insertion/search and O(n^2) construction.
+The AVL tree retains ordered traversal while bounding height by O(log n).
+A hash table has expected O(1) lookup but would need sorting for ordered output
+and has collision-dependent worst cases. A sorted vector is attractive for a
+static catalog (O(n log n) sorting and O(log n) binary search); middle insertion
+costs O(n). AVL meets the planned incremental insertion and ordered-query goals.
+In production, std::map would usually be preferable to maintaining custom tree
+code. This implementation exposes balancing and invariant reasoning for study.
+
+Invariant and insertion
+For every node: left keys < key < right keys, stored height equals one plus the
+larger child height, and left/right heights differ by at most one. A null child
+has height zero. Recursion first performs ordinary BST insertion. Unwinding
+updates height and restores balance using LL/RR rotations or LR/RL pairs. A
+rotation changes links but preserves the in-order sequence. Updating the
+lower node before its new parent is necessary for correct cached heights.
+Duplicate insertion returns false without changing the existing record.
+
+INSERT(node, record)
+  if node is empty: return a new leaf
+  insert recursively on the side determined by record.key
+  if key already exists: reject without replacement
+  recompute height from children
+  if left-heavy:
+    if left child is right-heavy: rotate left child left
+    rotate node right
+  if right-heavy:
+    if right child is left-heavy: rotate right child right
+    rotate node left
+  return the updated subtree root
+
+Complexity and costs
+Let n be courses, p prerequisite references, B input bytes, and k key length.
+Tree search/insertion takes O(k log n); with keys capped at 32 bytes this is
+O(log n). Incremental construction takes O(n log n) for bounded records.
+Ordered output visits O(n) nodes, plus the bytes printed. This implementation
+materializes an ordered vector, adding O(n+p) temporary storage and copies of
+record text. The tree itself uses O(n+p) storage plus text; each node has a
+height integer and may have alignment padding. Insert/traversal/cleanup call
+stacks are O(log n). The baseline call stack can reach O(n).
+
+Prerequisite validation performs O(p log n) searches plus traversal/copying.
+The loader also checks duplicates within each prerequisite vector in O(d^2)
+for a record with d prerequisites. Since d <= 32, that cost is bounded per
+record. Overall bounded-record loading is O(B + (n+p) log n), with O(n+p)
+candidate storage. During replacement, old and candidate catalogs coexist.
+The invariant audit is O(n), run by tests rather than on each application insert.
+Balancing reduces the ordered-input resource risk; explicit input limits also
+bound parsing and allocations. These controls do not constitute authentication.
+
+Recorded experiment
+Apple clang 21, C++17 -O2, arm64 macOS; see evidence/environment.txt.
+Identical records at n=100, 1000, and 5000 in sorted, reverse, and seeded shuffled
+orders. mt19937 seed 499; one warmup and five measured trials. Trial order
+alternates BST-first and AVL-first to reduce systematic ordering bias.
+Build measures only insertion (including allocations and record copies).
+Lookup measures a shuffled batch of n hits plus n misses above the largest key.
+Timers exclude generation, file I/O, output, traversal, validation, and destruction.
+Both versions count each evaluated key ==, <, or > expression; these are not
+CPU instructions or character comparisons. Counters are included in timings.
+All successful records and ordered output are verified outside timed regions.
+Seeded shuffle reproducibility is guaranteed for this toolchain; library shuffle
+implementations may produce different sequences on other platforms.
+
+At n=5000, median microseconds (BST -> AVL):
+Order       Build                    Lookup batch             Height
+Sorted      133946.083 -> 675.750     283819.375 -> 1129.875     5000 -> 13
+Reverse     109445.916 -> 509.000     102549.583 -> 1104.959     5000 -> 13
+Shuffled       766.500 -> 840.875       1340.125 -> 1150.750       30 -> 15
+
+Sorted insertion comparisons fell from 24,995,000 to 113,618. Sorted lookup
+comparisons fell from 75,000,000 to 238,644. These support the complexity
+argument; finite measurements do not prove asymptotic bounds. Shuffled AVL
+construction was about 9.7% slower in this run, illustrating the overhead of
+balancing. Misses above the maximum favor a reverse-ordered baseline chain;
+the lookup batch is explicitly not representative of every advising workload.
+At 100 shuffled records, the BST was faster for both build and lookup.
+Avoid claiming that AVL always wins or that these timings predict production.
+
+References
+Huang, E. (n.d.). AVL trees. University of Illinois Urbana-Champaign, CS 225.
+https://courses.grainger.illinois.edu/cs225/sp2023/resources/avl-trees/

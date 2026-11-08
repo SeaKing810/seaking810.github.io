@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>REQUIREMENTS_AND_EVIDENCE.txt | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">docs file</p><h1>REQUIREMENTS_AND_EVIDENCE.txt</h1><p class="meta">docs/REQUIREMENTS_AND_EVIDENCE.txt</p><p class="raw"><a href="REQUIREMENTS_AND_EVIDENCE.txt">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>REQUIREMENTS AND EVIDENCE
+
+Planned AVL replacement -&gt; enhanced/AvlTree.hpp; four rotation tests and three
+2,000-record property sequences, checking order against std::map and independent
+heights/balance after each insertion.
+
+Existing advising behavior -&gt; original CSV, tests/test_cli.py; seven scenarios
+match original/enhanced process output exactly, including lookup, invalid menu
+choices, EOF, and both accepted and rejected catalog replacement.
+
+Boundary handling -&gt; tests/test_advising.cpp; 37 test groups cover duplicates,
+missing data, prerequisites, stream failure, maximum limits, and rejection while
+preserving a known active catalog. Evidence: evidence/test-run.txt.
+
+Complexity and empirical evaluation -&gt; benchmark sources plus generator,
+raw five-trial measurements, medians, and environment. Analysis distinguishes
+ordered worst cases from randomized overhead and states workload limits.
+
+Outcome 3 -&gt; algorithm selection, invariant reasoning, asymptotic analysis,
+measured tradeoffs, and comparison with hash tables/sorted vectors.
+Outcome 4 -&gt; complete runnable C++ program, compiler checks, sanitizers, tests,
+and reproducible measurements supporting an advising use case.
+Outcome 5 -&gt; bounded input, rejection tests, protected active state, and explicit
+remaining risks. The safe replacement pattern already existed in the baseline;
+this enhancement preserves it and adds measured tests and input limits.
+Outcome 2 -&gt; code comments, README, narrative, and understandable measurements.
+Outcome 1 -&gt; reviewable design decisions and these focused review questions.
+Actual feedback incorporation remains necessary; this package does not claim
+that individual tests establish team collaboration.
+
+Review questions for the instructor
+1. Does the AVL analysis and experiment provide sufficient depth for Outcome 3?
+2. Are the selected course-file limits reasonable for this advising scope?
+3. Is retaining baseline indirect-cycle behavior appropriate for this milestone,
+   or should cycle detection become a separately scoped future improvement?
+
+Milestone Three packaging: original + enhanced source in one ZIP, with a separate
+Word narrative. Original hashes are recorded in evidence/original-sha256.json.
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

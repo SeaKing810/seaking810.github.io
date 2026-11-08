@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>BaselineTree.hpp | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">benchmark file</p><h1>BaselineTree.hpp</h1><p class="meta">benchmark/BaselineTree.hpp</p><p class="raw"><a href="BaselineTree.hpp">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>// Generated from original/ProjectTwo.cpp by make_baseline.py.
+// Do not edit: comparison counters and height observation only.
+class BaselineTree {
+private:
+    struct Node {
+        Course course;
+        Node* left;
+        Node* right;
+
+        explicit Node(const Course&amp; courseValue)
+            : course(courseValue), left(nullptr), right(nullptr) {}
+    };
+
+    Node* root;
+    inline static std::size_t comparisons_ = 0;
+
+    static Node* insertNode(Node* node, const Course&amp; course, bool&amp; inserted) {
+        if (node == nullptr) {
+            inserted = true;
+            return new Node(course);
+        }
+
+        if (++comparisons_, course.courseNumber &lt; node-&gt;course.courseNumber) {
+            node-&gt;left = insertNode(node-&gt;left, course, inserted);
+        } else if (++comparisons_, course.courseNumber &gt; node-&gt;course.courseNumber) {
+            node-&gt;right = insertNode(node-&gt;right, course, inserted);
+        } else {
+            inserted = false;
+        }
+
+        return node;
+    }
+
+    static void printInOrder(const Node* node) {
+        if (node == nullptr) {
+            return;
+        }
+
+        printInOrder(node-&gt;left);
+        cout &lt;&lt; node-&gt;course.courseNumber &lt;&lt; &quot;, &quot; &lt;&lt; node-&gt;course.title &lt;&lt; &#x27;\n&#x27;;
+        printInOrder(node-&gt;right);
+    }
+
+    static void deleteTree(Node* node) {
+        if (node == nullptr) {
+            return;
+        }
+
+        deleteTree(node-&gt;left);
+        deleteTree(node-&gt;right);
+        delete node;
+    }
+
+    bool validateNode(const Node* node, string&amp; errorMessage) const {
+        if (node == nullptr) {
+            return true;
+        }
+
+        if (!validateNode(node-&gt;left, errorMessage)) {
+            return false;
+        }
+
+        for (const string&amp; prerequisiteNumber : node-&gt;course.prerequisites) {
+            if (prerequisiteNumber == node-&gt;course.courseNumber) {
+                errorMessage = &quot;Format error: &quot; + node-&gt;course.courseNumber
+                    + &quot; cannot be its own prerequisite.&quot;;
+                return false;
+            }
+
+            if (find(prerequisiteNumber) == nullptr) {
+                errorMessage = &quot;Format error: &quot; + prerequisiteNumber
+                    + &quot; is listed as a prerequisite for &quot;
+                    + node-&gt;course.courseNumber
+                    + &quot; but is not a course in the file.&quot;;
+                return false;
+            }
+        }
+
+        return validateNode(node-&gt;right, errorMessage);
+    }
+
+public:
+    BaselineTree() : root(nullptr) {}
+    std::size_t comparisons() const { return comparisons_; }
+    void resetComparisons() const { comparisons_ = 0; }
+    int height() const {
+        int height = 0;
+        std::vector&lt;std::pair&lt;const Node*,int&gt;&gt; pending;
+        if (root) pending.push_back({root,1});
+        while (!pending.empty()) {
+            auto p = pending.back(); pending.pop_back(); height = std::max(height,p.second);
+            if (p.first-&gt;left) pending.push_back({p.first-&gt;left,p.second+1});
+            if (p.first-&gt;right) pending.push_back({p.first-&gt;right,p.second+1});
+        }
+        return height;
+    }
+
+
+    ~BaselineTree() {
+        clear();
+    }
+
+    // Tree ownership is unique; copying raw node pointers would be unsafe.
+    BaselineTree(const BaselineTree&amp;) = delete;
+    BaselineTree&amp; operator=(const BaselineTree&amp;) = delete;
+
+    bool insert(const Course&amp; course) {
+        bool inserted = false;
+        root = insertNode(root, course, inserted);
+        return inserted;
+    }
+
+    const Course* find(const string&amp; courseNumber) const {
+        const Node* current = root;
+
+        while (current != nullptr) {
+            if (++comparisons_, courseNumber == current-&gt;course.courseNumber) {
+                return &amp;current-&gt;course;
+            }
+
+            if (++comparisons_, courseNumber &lt; current-&gt;course.courseNumber) {
+                current = current-&gt;left;
+            } else {
+                current = current-&gt;right;
+            }
+        }
+
+        return nullptr;
+    }
+
+    bool empty() const {
+        return root == nullptr;
+    }
+
+    void printCourseList() const {
+        printInOrder(root);
+    }
+
+    bool validatePrerequisites(string&amp; errorMessage) const {
+        return validateNode(root, errorMessage);
+    }
+
+    void clear() {
+        deleteTree(root);
+        root = nullptr;
+    }
+
+    // Swapping lets a fully validated temporary tree replace the active tree.
+    void swap(BaselineTree&amp; other) {
+        std::swap(root, other.root);
+    }
+};
+
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

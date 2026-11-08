@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>AvlTree.hpp | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">enhanced file</p><h1>AvlTree.hpp</h1><p class="meta">enhanced/AvlTree.hpp</p><p class="raw"><a href="AvlTree.hpp">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>#ifndef ADVISING_AVL_TREE_HPP
+#define ADVISING_AVL_TREE_HPP
+// Sean McKenna | CS 499 Enhancement Two | November 2026
+// AVL balancing preserves sorted traversal while guaranteeing logarithmic
+// worst-case insert/find depth. Each node owns its children exclusively.
+// Height bookkeeping and rotations trade extra work/storage for predictable
+// behavior on ordered input. See docs/ALGORITHM_AND_RESULTS.txt.
+#include &quot;Course.hpp&quot;
+#include &lt;algorithm&gt;
+#include &lt;cmath&gt;
+#include &lt;cstddef&gt;
+#include &lt;iostream&gt;
+#include &lt;utility&gt;
+
+class AvlTree {
+    struct Node {
+        Course course;
+        Node* left = nullptr;
+        Node* right = nullptr;
+        int height = 1;
+        explicit Node(const Course&amp; value) : course(value) {}
+    };
+    Node* root_ = nullptr;
+    std::size_t size_ = 0;
+    mutable std::size_t comparisons_ = 0;
+    std::size_t rotations_ = 0;
+    static int heightOf(const Node* n) { return n ? n-&gt;height : 0; }
+    static void updateHeight(Node* n) {
+        n-&gt;height = 1 + std::max(heightOf(n-&gt;left), heightOf(n-&gt;right));
+    }
+    static int balance(const Node* n) { return heightOf(n-&gt;left) - heightOf(n-&gt;right); }
+    // Rotations preserve in-order keys. Update the demoted node before its parent.
+    Node* rotateRight(Node* n) {
+        Node* pivot = n-&gt;left;
+        n-&gt;left = pivot-&gt;right;
+        pivot-&gt;right = n;
+        updateHeight(n); updateHeight(pivot); ++rotations_;
+        return pivot;
+    }
+    Node* rotateLeft(Node* n) {
+        Node* pivot = n-&gt;right;
+        n-&gt;right = pivot-&gt;left;
+        pivot-&gt;left = n;
+        updateHeight(n); updateHeight(pivot); ++rotations_;
+        return pivot;
+    }
+    Node* insertNode(Node* n, const Course&amp; course, bool&amp; inserted) {
+        if (!n) { Node* leaf = new Node(course); inserted = true; return leaf; }
+        ++comparisons_;
+        if (course.courseNumber &lt; n-&gt;course.courseNumber) {
+            n-&gt;left = insertNode(n-&gt;left, course, inserted);
+        } else {
+            ++comparisons_;
+            if (course.courseNumber &gt; n-&gt;course.courseNumber)
+                n-&gt;right = insertNode(n-&gt;right, course, inserted);
+            else return n; // Duplicate must not replace the original record.
+        }
+        if (!inserted) return n;
+        updateHeight(n);
+        if (balance(n) &gt; 1) {
+            if (balance(n-&gt;left) &lt; 0) n-&gt;left = rotateLeft(n-&gt;left); // LR
+            return rotateRight(n); // LL, or second half of LR
+        }
+        if (balance(n) &lt; -1) {
+            if (balance(n-&gt;right) &gt; 0) n-&gt;right = rotateRight(n-&gt;right); // RL
+            return rotateLeft(n); // RR, or second half of RL
+        }
+        return n;
+    }
+    static void destroy(Node* n) {
+        if (!n) return;
+        destroy(n-&gt;left); destroy(n-&gt;right); delete n;
+    }
+    static void appendInOrder(const Node* n, std::vector&lt;Course&gt;&amp; out) {
+        if (!n) return;
+        appendInOrder(n-&gt;left, out); out.push_back(n-&gt;course); appendInOrder(n-&gt;right, out);
+    }
+    // Independent verification recomputes heights, key bounds, and node count.
+    static int audit(const Node* n, const std::string* low, const std::string* high,
+                     bool&amp; ok, std::size_t&amp; count) {
+        if (!n) return 0;
+        ++count;
+        if ((low &amp;&amp; n-&gt;course.courseNumber &lt;= *low) ||
+            (high &amp;&amp; n-&gt;course.courseNumber &gt;= *high)) ok = false;
+        int left = audit(n-&gt;left, low, &amp;n-&gt;course.courseNumber, ok, count);
+        int right = audit(n-&gt;right, &amp;n-&gt;course.courseNumber, high, ok, count);
+        int actual = 1 + std::max(left, right);
+        if (n-&gt;height != actual || std::abs(left - right) &gt; 1) ok = false;
+        return actual;
+    }
+public:
+    AvlTree() = default;
+    ~AvlTree() { destroy(root_); }
+    AvlTree(const AvlTree&amp;) = delete;
+    AvlTree&amp; operator=(const AvlTree&amp;) = delete;
+    bool insert(const Course&amp; c) {
+        bool inserted = false;
+        root_ = insertNode(root_, c, inserted);
+        if (inserted) ++size_;
+        return inserted;
+    }
+    const Course* find(const std::string&amp; key) const {
+        const Node* n = root_;
+        while (n) {
+            ++comparisons_;
+            if (key == n-&gt;course.courseNumber) return &amp;n-&gt;course;
+            ++comparisons_;
+            n = key &lt; n-&gt;course.courseNumber ? n-&gt;left : n-&gt;right;
+        }
+        return nullptr;
+    }
+    bool empty() const { return !root_; }
+    std::size_t size() const { return size_; }
+    int height() const { return heightOf(root_); }
+    std::size_t comparisons() const { return comparisons_; }
+    std::size_t rotations() const { return rotations_; }
+    void resetComparisons() const { comparisons_ = 0; }
+    bool invariantsHold() const {
+        bool ok = true; std::size_t count = 0;
+        audit(root_, nullptr, nullptr, ok, count);
+        return ok &amp;&amp; count == size_;
+    }
+    std::vector&lt;Course&gt; ordered() const {
+        std::vector&lt;Course&gt; out; out.reserve(size_); appendInOrder(root_, out); return out;
+    }
+    void printCourseList() const {
+        for (const auto&amp; c : ordered()) std::cout &lt;&lt; c.courseNumber &lt;&lt; &quot;, &quot; &lt;&lt; c.title &lt;&lt; &#x27;\n&#x27;;
+    }
+    // O(n + p log n) for n records and p prerequisite references, with bounded keys.
+    bool validatePrerequisites(std::string&amp; error) const {
+        for (const auto&amp; c : ordered()) {
+            for (const auto&amp; key : c.prerequisites) {
+                if (key == c.courseNumber) {
+                    error = &quot;Format error: &quot; + c.courseNumber + &quot; cannot be its own prerequisite.&quot;;
+                    return false;
+                }
+                if (!find(key)) {
+                    error = &quot;Format error: &quot; + key + &quot; is listed as a prerequisite for &quot; +
+                            c.courseNumber + &quot; but is not a course in the file.&quot;;
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    void clear() { destroy(root_); root_ = nullptr; size_ = comparisons_ = rotations_ = 0; }
+    // Commit a fully validated candidate in constant time; candidate destroys old state.
+    void swap(AvlTree&amp; other) noexcept {
+        std::swap(root_, other.root_); std::swap(size_, other.size_);
+        std::swap(comparisons_, other.comparisons_); std::swap(rotations_, other.rotations_);
+    }
+};
+#endif
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

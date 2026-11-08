@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>benchmark.cpp | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">benchmark file</p><h1>benchmark.cpp</h1><p class="meta">benchmark/benchmark.cpp</p><p class="raw"><a href="benchmark.cpp">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>// Compare original BST logic with AVL under identical synthetic workloads.
+#include &quot;../enhanced/AvlTree.hpp&quot;
+#include &lt;chrono&gt;
+#include &lt;iomanip&gt;
+#include &lt;numeric&gt;
+#include &lt;random&gt;
+#include &lt;sstream&gt;
+#include &lt;stdexcept&gt;
+using namespace std;
+#include &quot;BaselineTree.hpp&quot;
+using Clock = chrono::steady_clock;
+volatile size_t consumed = 0;
+struct Result { double buildUs, findUs; size_t insertComparisons, findComparisons; int height; };
+string key(int i) { string s=to_string(i); return &quot;C&quot;+string(5-s.size(),&#x27;0&#x27;)+s; }
+template&lt;class Tree&gt; Result measure(const vector&lt;Course&gt;&amp; input, const vector&lt;string&gt;&amp; queries,
+                                  const string&amp; expectedList) {
+    Tree tree; tree.resetComparisons();
+    auto start=Clock::now();
+    for (const auto&amp; c:input) if(!tree.insert(c)) throw runtime_error(&quot;duplicate&quot;);
+    auto end=Clock::now();
+    double build=chrono::duration&lt;double,micro&gt;(end-start).count();
+    size_t inserted=tree.comparisons(); int height=tree.height();
+    tree.resetComparisons(); size_t checksum=0;
+    start=Clock::now();
+    for (const auto&amp; q:queries) { const Course* c=tree.find(q); if(c) checksum+=c-&gt;title.size(); }
+    end=Clock::now();
+    double find=chrono::duration&lt;double,micro&gt;(end-start).count();
+    size_t searched=tree.comparisons(); consumed+=checksum;
+    // Data correctness, traversal, and destruction remain outside timed regions.
+    size_t expectedChecksum=0;
+    for (const auto&amp; c:input) {
+        const Course* found=tree.find(c.courseNumber);
+        if(!found || found-&gt;title!=c.title || found-&gt;prerequisites!=c.prerequisites)
+            throw runtime_error(&quot;record mismatch&quot;);
+        expectedChecksum+=c.title.size();
+    }
+    if(checksum!=expectedChecksum) throw runtime_error(&quot;lookup mismatch&quot;);
+    ostringstream output; auto old=cout.rdbuf(output.rdbuf()); tree.printCourseList(); cout.rdbuf(old);
+    if(output.str()!=expectedList) throw runtime_error(&quot;ordered output mismatch&quot;);
+    return {build,find,inserted,searched,height};
+}
+int main() {
+    cout &lt;&lt; &quot;n,order,tree,trial,build_us,lookup_us,insert_comparisons,lookup_comparisons,height\n&quot;;
+    for(int n:{100,1000,5000}) {
+        vector&lt;Course&gt; canonical;
+        string expected;
+        for(int i=0;i&lt;n;++i) { canonical.push_back({key(i),&quot;Course &quot;+key(i),{}}); expected+=key(i)+&quot;, Course &quot;+key(i)+&quot;\n&quot;; }
+        vector&lt;string&gt; queries; for(int i=0;i&lt;n;++i) queries.push_back(key(i));
+        for(int i=0;i&lt;n;++i) queries.push_back(&quot;Z&quot;+key(i)); // n misses above max key
+        mt19937 qrng(499); shuffle(queries.begin(),queries.end(),qrng);
+        for(string order:{&quot;sorted&quot;,&quot;reverse&quot;,&quot;shuffled&quot;}) {
+            auto data=canonical;
+            if(order==&quot;reverse&quot;) reverse(data.begin(),data.end());
+            if(order==&quot;shuffled&quot;) { mt19937 rng(499); shuffle(data.begin(),data.end(),rng); }
+            // Trial 0 warms both implementations; five measured trials alternate order.
+            for(int trial=0;trial&lt;=5;++trial) {
+                Result bst{},avl{};
+                if(trial%2==0) { bst=measure&lt;BaselineTree&gt;(data,queries,expected); avl=measure&lt;AvlTree&gt;(data,queries,expected); }
+                else { avl=measure&lt;AvlTree&gt;(data,queries,expected); bst=measure&lt;BaselineTree&gt;(data,queries,expected); }
+                if(!trial) continue;
+                for(auto result:{make_pair(&quot;BST&quot;,bst),make_pair(&quot;AVL&quot;,avl)}) {
+                    auto r=result.second;
+                    cout&lt;&lt;n&lt;&lt;&#x27;,&#x27;&lt;&lt;order&lt;&lt;&#x27;,&#x27;&lt;&lt;result.first&lt;&lt;&#x27;,&#x27;&lt;&lt;trial&lt;&lt;&#x27;,&#x27;&lt;&lt;fixed&lt;&lt;setprecision(3)
+                        &lt;&lt;r.buildUs&lt;&lt;&#x27;,&#x27;&lt;&lt;r.findUs&lt;&lt;&#x27;,&#x27;&lt;&lt;r.insertComparisons&lt;&lt;&#x27;,&#x27;&lt;&lt;r.findComparisons&lt;&lt;&#x27;,&#x27;&lt;&lt;r.height&lt;&lt;&#x27;\n&#x27;;
+                }
+            }
+        }
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

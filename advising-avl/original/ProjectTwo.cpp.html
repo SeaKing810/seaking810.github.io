@@ -1,0 +1,432 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>ProjectTwo.cpp | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">original file</p><h1>ProjectTwo.cpp</h1><p class="meta">original/ProjectTwo.cpp</p><p class="raw"><a href="ProjectTwo.cpp">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>//============================================================================
+// Name        : ProjectTwo.cpp
+// Description : ABCU advising assistance program
+//============================================================================
+
+#include &lt;algorithm&gt;
+#include &lt;cctype&gt;
+#include &lt;fstream&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+using namespace std;
+
+// One Course object stores the data from one nonblank CSV record.
+struct Course {
+    string courseNumber;
+    string title;
+    vector&lt;string&gt; prerequisites;
+};
+
+// Stores Course objects by course number. An in-order traversal produces the
+// course list in ascending alphanumeric order.
+class BinarySearchTree {
+private:
+    struct Node {
+        Course course;
+        Node* left;
+        Node* right;
+
+        explicit Node(const Course&amp; courseValue)
+            : course(courseValue), left(nullptr), right(nullptr) {}
+    };
+
+    Node* root;
+
+    static Node* insertNode(Node* node, const Course&amp; course, bool&amp; inserted) {
+        if (node == nullptr) {
+            inserted = true;
+            return new Node(course);
+        }
+
+        if (course.courseNumber &lt; node-&gt;course.courseNumber) {
+            node-&gt;left = insertNode(node-&gt;left, course, inserted);
+        } else if (course.courseNumber &gt; node-&gt;course.courseNumber) {
+            node-&gt;right = insertNode(node-&gt;right, course, inserted);
+        } else {
+            inserted = false;
+        }
+
+        return node;
+    }
+
+    static void printInOrder(const Node* node) {
+        if (node == nullptr) {
+            return;
+        }
+
+        printInOrder(node-&gt;left);
+        cout &lt;&lt; node-&gt;course.courseNumber &lt;&lt; &quot;, &quot; &lt;&lt; node-&gt;course.title &lt;&lt; &#x27;\n&#x27;;
+        printInOrder(node-&gt;right);
+    }
+
+    static void deleteTree(Node* node) {
+        if (node == nullptr) {
+            return;
+        }
+
+        deleteTree(node-&gt;left);
+        deleteTree(node-&gt;right);
+        delete node;
+    }
+
+    bool validateNode(const Node* node, string&amp; errorMessage) const {
+        if (node == nullptr) {
+            return true;
+        }
+
+        if (!validateNode(node-&gt;left, errorMessage)) {
+            return false;
+        }
+
+        for (const string&amp; prerequisiteNumber : node-&gt;course.prerequisites) {
+            if (prerequisiteNumber == node-&gt;course.courseNumber) {
+                errorMessage = &quot;Format error: &quot; + node-&gt;course.courseNumber
+                    + &quot; cannot be its own prerequisite.&quot;;
+                return false;
+            }
+
+            if (find(prerequisiteNumber) == nullptr) {
+                errorMessage = &quot;Format error: &quot; + prerequisiteNumber
+                    + &quot; is listed as a prerequisite for &quot;
+                    + node-&gt;course.courseNumber
+                    + &quot; but is not a course in the file.&quot;;
+                return false;
+            }
+        }
+
+        return validateNode(node-&gt;right, errorMessage);
+    }
+
+public:
+    BinarySearchTree() : root(nullptr) {}
+
+    ~BinarySearchTree() {
+        clear();
+    }
+
+    // Tree ownership is unique; copying raw node pointers would be unsafe.
+    BinarySearchTree(const BinarySearchTree&amp;) = delete;
+    BinarySearchTree&amp; operator=(const BinarySearchTree&amp;) = delete;
+
+    bool insert(const Course&amp; course) {
+        bool inserted = false;
+        root = insertNode(root, course, inserted);
+        return inserted;
+    }
+
+    const Course* find(const string&amp; courseNumber) const {
+        const Node* current = root;
+
+        while (current != nullptr) {
+            if (courseNumber == current-&gt;course.courseNumber) {
+                return &amp;current-&gt;course;
+            }
+
+            if (courseNumber &lt; current-&gt;course.courseNumber) {
+                current = current-&gt;left;
+            } else {
+                current = current-&gt;right;
+            }
+        }
+
+        return nullptr;
+    }
+
+    bool empty() const {
+        return root == nullptr;
+    }
+
+    void printCourseList() const {
+        printInOrder(root);
+    }
+
+    bool validatePrerequisites(string&amp; errorMessage) const {
+        return validateNode(root, errorMessage);
+    }
+
+    void clear() {
+        deleteTree(root);
+        root = nullptr;
+    }
+
+    // Swapping lets a fully validated temporary tree replace the active tree.
+    void swap(BinarySearchTree&amp; other) {
+        std::swap(root, other.root);
+    }
+};
+
+// Removes whitespace that can appear around user input and CSV fields.
+string trim(const string&amp; text) {
+    const string whitespace = &quot; \t\n\r\f\v&quot;;
+    const size_t first = text.find_first_not_of(whitespace);
+
+    if (first == string::npos) {
+        return &quot;&quot;;
+    }
+
+    const size_t last = text.find_last_not_of(whitespace);
+    return text.substr(first, last - first + 1);
+}
+
+string toUpper(string text) {
+    transform(text.begin(), text.end(), text.begin(),
+        [](unsigned char character) {
+            return static_cast&lt;char&gt;(toupper(character));
+        });
+    return text;
+}
+
+string normalizeCourseNumber(const string&amp; courseNumber) {
+    return toUpper(trim(courseNumber));
+}
+
+// Splits a simple comma-separated record and preserves empty fields. The
+// assignment data does not contain quoted commas, so no external CSV parser is
+// needed.
+vector&lt;string&gt; splitCsvLine(const string&amp; line) {
+    vector&lt;string&gt; fields;
+    size_t start = 0;
+
+    while (true) {
+        const size_t comma = line.find(&#x27;,&#x27;, start);
+
+        if (comma == string::npos) {
+            fields.push_back(line.substr(start));
+            break;
+        }
+
+        fields.push_back(line.substr(start, comma - start));
+        start = comma + 1;
+    }
+
+    return fields;
+}
+
+string cleanFileName(const string&amp; input) {
+    string fileName = trim(input);
+
+    // Accept paths pasted with matching single or double quotation marks.
+    if (fileName.size() &gt;= 2) {
+        const bool doubleQuoted = fileName.front() == &#x27;&quot;&#x27; &amp;&amp; fileName.back() == &#x27;&quot;&#x27;;
+        const bool singleQuoted = fileName.front() == &#x27;\&#x27;&#x27; &amp;&amp; fileName.back() == &#x27;\&#x27;&#x27;;
+
+        if (doubleQuoted || singleQuoted) {
+            fileName = trim(fileName.substr(1, fileName.size() - 2));
+        }
+    }
+
+    return fileName;
+}
+
+// Loads into a temporary tree first. Existing valid data is replaced only when
+// the complete new file passes both parsing and prerequisite validation.
+bool loadCourses(const string&amp; fileName, BinarySearchTree&amp; courses) {
+    ifstream inputFile(fileName.c_str());
+
+    if (!inputFile.is_open()) {
+        cout &lt;&lt; &quot;Error: unable to open the course data file.\n&quot;;
+        return false;
+    }
+
+    BinarySearchTree parsedCourses;
+    string line;
+    size_t lineNumber = 0;
+
+    while (getline(inputFile, line)) {
+        ++lineNumber;
+
+        // Blank physical lines do not represent course records.
+        if (trim(line).empty()) {
+            continue;
+        }
+
+        vector&lt;string&gt; fields = splitCsvLine(line);
+        for (string&amp; field : fields) {
+            field = trim(field);
+        }
+
+        // Remove a UTF-8 byte-order mark if one appears at the file start.
+        if (lineNumber == 1 &amp;&amp; !fields.empty()
+                &amp;&amp; fields[0].compare(0, 3, &quot;\xEF\xBB\xBF&quot;) == 0) {
+            fields[0].erase(0, 3);
+        }
+
+        if (fields.size() &lt; 2 || fields[0].empty() || fields[1].empty()) {
+            cout &lt;&lt; &quot;Format error on line &quot; &lt;&lt; lineNumber
+                 &lt;&lt; &quot;: a course number and title are required.\n&quot;;
+            return false;
+        }
+
+        Course course;
+        course.courseNumber = normalizeCourseNumber(fields[0]);
+        course.title = fields[1];
+
+        // The supplied file uses empty trailing columns for courses with fewer
+        // prerequisites. Ignore those trailing blanks while rejecting gaps.
+        size_t prerequisiteEnd = fields.size();
+        while (prerequisiteEnd &gt; 2 &amp;&amp; fields[prerequisiteEnd - 1].empty()) {
+            --prerequisiteEnd;
+        }
+
+        for (size_t index = 2; index &lt; prerequisiteEnd; ++index) {
+            const string prerequisiteNumber = normalizeCourseNumber(fields[index]);
+
+            if (prerequisiteNumber.empty()) {
+                cout &lt;&lt; &quot;Format error on line &quot; &lt;&lt; lineNumber
+                     &lt;&lt; &quot;: a prerequisite field is empty.\n&quot;;
+                return false;
+            }
+
+            if (find(course.prerequisites.begin(), course.prerequisites.end(),
+                    prerequisiteNumber) != course.prerequisites.end()) {
+                cout &lt;&lt; &quot;Format error on line &quot; &lt;&lt; lineNumber
+                     &lt;&lt; &quot;: duplicate prerequisite &quot; &lt;&lt; prerequisiteNumber &lt;&lt; &quot;.\n&quot;;
+                return false;
+            }
+
+            course.prerequisites.push_back(prerequisiteNumber);
+        }
+
+        if (!parsedCourses.insert(course)) {
+            cout &lt;&lt; &quot;Format error on line &quot; &lt;&lt; lineNumber
+                 &lt;&lt; &quot;: duplicate course &quot; &lt;&lt; course.courseNumber &lt;&lt; &quot;.\n&quot;;
+            return false;
+        }
+    }
+
+    if (inputFile.bad()) {
+        cout &lt;&lt; &quot;Error: the course data file could not be read.\n&quot;;
+        return false;
+    }
+
+    if (parsedCourses.empty()) {
+        cout &lt;&lt; &quot;Format error: the course data file contains no courses.\n&quot;;
+        return false;
+    }
+
+    // References are checked only after every course number has been loaded.
+    string validationError;
+    if (!parsedCourses.validatePrerequisites(validationError)) {
+        cout &lt;&lt; validationError &lt;&lt; &#x27;\n&#x27;;
+        return false;
+    }
+
+    courses.swap(parsedCourses);
+    cout &lt;&lt; &quot;Course data loaded successfully.\n&quot;;
+    return true;
+}
+
+void displayCourseList(const BinarySearchTree&amp; courses) {
+    cout &lt;&lt; &quot;Here is a sample schedule:\n\n&quot;;
+    courses.printCourseList();
+}
+
+void displayCourseInformation(const BinarySearchTree&amp; courses,
+        const string&amp; courseNumberInput) {
+    const string courseNumber = normalizeCourseNumber(courseNumberInput);
+
+    if (courseNumber.empty()) {
+        cout &lt;&lt; &quot;A course number is required.\n&quot;;
+        return;
+    }
+
+    const Course* course = courses.find(courseNumber);
+    if (course == nullptr) {
+        cout &lt;&lt; &quot;Course &quot; &lt;&lt; courseNumber &lt;&lt; &quot; was not found.\n&quot;;
+        return;
+    }
+
+    cout &lt;&lt; course-&gt;courseNumber &lt;&lt; &quot;, &quot; &lt;&lt; course-&gt;title &lt;&lt; &#x27;\n&#x27;;
+
+    if (course-&gt;prerequisites.empty()) {
+        cout &lt;&lt; &quot;Prerequisites: None\n&quot;;
+        return;
+    }
+
+    cout &lt;&lt; &quot;Prerequisites:\n&quot;;
+    for (const string&amp; prerequisiteNumber : course-&gt;prerequisites) {
+        const Course* prerequisite = courses.find(prerequisiteNumber);
+
+        // All references were validated during loading, so this is expected to
+        // succeed for every prerequisite in a loaded tree.
+        if (prerequisite != nullptr) {
+            cout &lt;&lt; prerequisite-&gt;courseNumber &lt;&lt; &quot;, &quot;
+                 &lt;&lt; prerequisite-&gt;title &lt;&lt; &#x27;\n&#x27;;
+        }
+    }
+}
+
+void displayMenu() {
+    cout &lt;&lt; &quot;\n&quot;
+         &lt;&lt; &quot;    1. Load Data Structure.\n&quot;
+         &lt;&lt; &quot;    2. Print Course List.\n&quot;
+         &lt;&lt; &quot;    3. Print Course.\n&quot;
+         &lt;&lt; &quot;    9. Exit\n\n&quot;;
+}
+
+int main() {
+    BinarySearchTree courses;
+    string menuInput;
+
+    cout &lt;&lt; &quot;Welcome to the course planner.\n&quot;;
+
+    while (true) {
+        displayMenu();
+        cout &lt;&lt; &quot;What would you like to do? &quot;;
+
+        if (!getline(cin, menuInput)) {
+            cout &lt;&lt; &quot;\nThank you for using the course planner!\n&quot;;
+            return 0;
+        }
+
+        const string choice = trim(menuInput);
+
+        if (choice == &quot;1&quot;) {
+            string fileNameInput;
+            cout &lt;&lt; &quot;Enter the course data file name: &quot;;
+
+            if (!getline(cin, fileNameInput)) {
+                cout &lt;&lt; &quot;\nThank you for using the course planner!\n&quot;;
+                return 0;
+            }
+
+            const string fileName = cleanFileName(fileNameInput);
+            if (fileName.empty()) {
+                cout &lt;&lt; &quot;Error: a file name is required.\n&quot;;
+            } else {
+                loadCourses(fileName, courses);
+            }
+        } else if (choice == &quot;2&quot;) {
+            if (courses.empty()) {
+                cout &lt;&lt; &quot;Please load course data before printing the course list.\n&quot;;
+            } else {
+                displayCourseList(courses);
+            }
+        } else if (choice == &quot;3&quot;) {
+            if (courses.empty()) {
+                cout &lt;&lt; &quot;Please load course data before looking up a course.\n&quot;;
+            } else {
+                string courseNumber;
+                cout &lt;&lt; &quot;What course do you want to know about? &quot;;
+
+                if (!getline(cin, courseNumber)) {
+                    cout &lt;&lt; &quot;\nThank you for using the course planner!\n&quot;;
+                    return 0;
+                }
+
+                displayCourseInformation(courses, courseNumber);
+            }
+        } else if (choice == &quot;9&quot;) {
+            cout &lt;&lt; &quot;Thank you for using the course planner!\n&quot;;
+            return 0;
+        } else if (choice.empty()) {
+            cout &lt;&lt; &quot;Please enter 1, 2, 3, or 9.\n&quot;;
+        } else {
+            cout &lt;&lt; choice &lt;&lt; &quot; is not a valid option.\n&quot;;
+        }
+    }
+}
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

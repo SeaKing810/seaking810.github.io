@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>INPUT_AND_SECURITY.txt | Sean McKenna</title><link rel="stylesheet" href="../../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../../index.html">Sean McKenna · ePortfolio</a><a href="../../contact-manager.html">Contact Manager</a><a href="../../advising-avl.html">Course Advising</a><a href="../../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">docs file</p><h1>INPUT_AND_SECURITY.txt</h1><p class="meta">docs/INPUT_AND_SECURITY.txt</p><p class="raw"><a href="INPUT_AND_SECURITY.txt">Open raw file</a> · <a href="../../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>INPUT CONTRACT AND SECURITY LIMITS
+
+The local file is the trust boundary. Load into a separate candidate tree;
+check every record and reference; swap only after successful validation. Invalid
+input or read failure leaves the existing catalog available. Duplicate courses
+are rejected after case normalization. Self, missing, repeated, and interior
+blank prerequisites are rejected. Trailing empty prerequisite columns, CRLF,
+whitespace, and an initial UTF-8 BOM are supported as in the original workflow.
+
+Limits (inclusive): 2 MiB total file bytes, 4096 bytes per physical line excluding
+LF (including CR), 10,000 nonblank course records, 32 bytes per course/prerequisite
+key, 256 bytes per trimmed field, and 32 nonblank prerequisites per record.
+Empty trailing columns count toward line size but not prerequisite count.
+The stream is checked byte by byte before an overlong line can be accumulated.
+NUL bytes and quoted CSV fields are rejected. Quoted commas/escaped quotes are
+outside this simple course-file format. Input caps are a documented behavior
+change from the uncapped baseline, with exact-boundary and over-boundary tests.
+
+The program retains the baseline&#x27;s policy for indirect prerequisite cycles;
+it validates existence and self-references, but does not topologically validate
+an entire curriculum. It does not modify the supplied CSV, persist edits,
+authenticate users, encrypt files, or restrict which local path a user can read.
+Terminal input itself is a trusted local interaction and is not size-limited.
+File length caps do not provide a timeout for blocked devices or network files;
+use ordinary local course files. Unicode case folding is not implemented.
+No student records, credentials, or private contact data are used in fixtures.
+
+The test run uses AddressSanitizer and UndefinedBehaviorSanitizer. A passing
+run reports no detected errors in exercised paths; it is not proof that no
+memory defect or vulnerability can exist. Raw-pointer ownership is unique,
+copy operations are disabled, and swap transfers ownership without allocation.
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>

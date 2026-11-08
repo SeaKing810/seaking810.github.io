@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sean McKenna's algorithms enhancement replaces an unbalanced advising tree with an AVL index, tested invariants, and reproducible performance evidence."><title>benchmark.sh | Sean McKenna</title><link rel="stylesheet" href="../advising.css"></head><body><a class="skip" href="#main">Skip to content</a><header><div class="wrap"><nav aria-label="Main navigation"><a href="../index.html">Sean McKenna · ePortfolio</a><a href="../contact-manager.html">Contact Manager</a><a href="../advising-avl.html">Course Advising</a><a href="../index.html#code-review">Code review</a></nav></div></header><main id="main" class="wrap"><div class="hero"><p class="eyebrow">setup file</p><h1>benchmark.sh</h1><p class="meta">benchmark.sh</p><p class="raw"><a href="benchmark.sh">Open raw file</a> · <a href="../advising-avl.html#source">Return to source and evidence</a></p></div><pre><code>#!/bin/sh
+set -eu
+cd &quot;$(dirname &quot;$0&quot;)&quot;
+mkdir -p build
+python3 benchmark/make_baseline.py
+CXX=${CXX:-clang++}
+&quot;$CXX&quot; -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror benchmark/benchmark.cpp -o build/benchmark
+./build/benchmark
+</code></pre></main><footer class="wrap">Sean McKenna · CS 499 · Algorithms and Data Structures</footer></body></html>
